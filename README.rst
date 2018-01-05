@@ -72,15 +72,12 @@ JIM file format specifications
 
 Both the JSON and CSV files produced respectively meet their format specifications
 for the JIRA Importers plugin (JIM). Those specifications can be respectively found
-in the following KB articles.
+in the following KB articles:
 
-* Jira Cloud
-  - `JSON <https://confluence.atlassian.com/display/AdminJIRACloud/Importing+data+from+JSON>`_
-  - `CSV <https://confluence.atlassian.com/display/AdminJIRACloud/Importing+data+from+CSV>`_
-
-* Jira Server (latest release)
-  - `JSON <https://confluence.atlassian.com/display/ADMINJIRASERVER/Importing+data+from+JSON>`_
-  - `CSV <https://confluence.atlassian.com/display/ADMINJIRASERVER/Importing+data+from+CSV>`_
+- `Cloud / Importing data from JSON <https://confluence.atlassian.com/display/AdminJIRACloud/Importing+data+from+JSON>`_
+- `Cloud / Importing data from CSV <https://confluence.atlassian.com/display/AdminJIRACloud/Importing+data+from+CSV>`_
+- `Server (latest) / Importing data from JSON <https://confluence.atlassian.com/display/ADMINJIRASERVER/Importing+data+from+JSON>`_
+- `Server (latest) / Importing data from CSV <https://confluence.atlassian.com/display/ADMINJIRASERVER/Importing+data+from+CSV>`_
 
 However, it's worth to mention that all the articles, especially the one Related
 to JSON format, are more driven by examples rather than being comprehensive
