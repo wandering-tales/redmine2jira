@@ -26,7 +26,7 @@ test_requirements = [
 
 setup(
     name='redmine_xls_export2jira',
-    version='0.1.0',
+    version='0.1.1',
     description='Convert and merge XLS exports of the "Redmine XLS Export" plugin to files compatible with the JIRA Importers plugin (JIM).',
     long_description=readme + '\n\n' + history,
     author="Michele Cardone",
