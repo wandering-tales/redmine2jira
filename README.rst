@@ -17,6 +17,9 @@ Redmine XLS Export plugin to JIRA Importers plugin
      :target: https://pyup.io/repos/github/wandering-tales/redmine-xls-export2jira/
      :alt: Updates
 
+.. image:: https://pyup.io/repos/github/wandering-tales/redmine-xls-export2jira/python-3-shield.svg
+     :target: https://pyup.io/repos/github/wandering-tales/redmine-xls-export2jira/
+     :alt: Python 3
 
 Convert and merge XLS exports of the "Redmine XLS Export" plugin to files compatible with the JIRA Importers plugin (JIM).
 
