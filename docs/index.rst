@@ -1,5 +1,5 @@
 Welcome to Redmine XLS Export plugin to JIRA Importers plugin's documentation!
-======================================
+==============================================================================
 
 Contents:
 
