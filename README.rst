@@ -23,7 +23,7 @@ Redmine XLS Export plugin to JIRA Importers plugin
 
 Convert and merge XLS exports of the "Redmine XLS Export" plugin to files compatible with the JIRA Importers plugin (JIM).
 
-
+* *Redmine XLS Export* plugin: https://github.com/two-pack/redmine_xls_export
 * Free software: MIT license
 * Documentation: https://redmine-xls-export2jira.readthedocs.io.
 
