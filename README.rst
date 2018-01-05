@@ -6,7 +6,7 @@ Redmine XLS Export plugin to JIRA Importers plugin
 .. image:: https://img.shields.io/pypi/v/redmine_xls_export2jira.svg
         :target: https://pypi.python.org/pypi/redmine_xls_export2jira
 
-.. image:: https://img.shields.io/travis/wandering-tales/redmine-xls-export2jira.svg
+.. image:: https://travis-ci.org/wandering-tales/redmine-xls-export2jira.svg?branch=master
         :target: https://travis-ci.org/wandering-tales/redmine-xls-export2jira
 
 .. image:: https://readthedocs.org/projects/redmine-xls-export2jira/badge/?version=latest
