@@ -11,7 +11,7 @@ from redmine_xls_export2jira import redmine_xls_export2jira
 from redmine_xls_export2jira import cli
 
 
-class TestRedmine_xls_export2jira(unittest.TestCase):
+class TestRedmineXlsExport2Jira(unittest.TestCase):
     """Tests for `redmine_xls_export2jira` package."""
 
     def setUp(self):

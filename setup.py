@@ -17,7 +17,8 @@ requirements = [
 ]
 
 setup_requirements = [
-    # TODO(wandering-tales): put setup requirements (distutils extensions, etc.) here
+    # TODO(wandering-tales):
+    # put setup requirements(distutils extensions, etc.) here
 ]
 
 test_requirements = [
@@ -27,7 +28,9 @@ test_requirements = [
 setup(
     name='redmine_xls_export2jira',
     version='0.1.1',
-    description='Convert and merge XLS exports of the "Redmine XLS Export" plugin to files compatible with the JIRA Importers plugin (JIM).',
+    description='Convert and merge XLS exports of the "Redmine XLS Export" '
+                'plugin to files compatible with the '
+                'JIRA Importers plugin (JIM).',
     long_description=readme + '\n\n' + history,
     author="Michele Cardone",
     author_email='michele.cardone82@gmail.com',
