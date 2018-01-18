@@ -93,13 +93,51 @@ Prerequisites
 The tool is compatible with the version `0.2.1.t10` of the `Redmine XLS Export plugin`_,
 which version, at the time of writing, is the latest one.
 
+* TODO Users already present in Jira
+* TODO Redmine REST API Enabled
+
+
 
 Usage
 -----
 
-* TODO
+The '--filter' option accept a HTTP GET parameter string.
+Here follows the list of the supported filter parameters:
 
+  - issue_id (int or string): Single issue ID or comma-separated issue ID's
+  - project_id (int or string): Project ID/identifier
+  - subproject_id (int or string): Subproject ID/identifier
+    (To be used in conjunction with 'project_id';
+     you can use `project_id=X` and `subproject_id=!*`
+     to get only the issues of a given project
+     and none of its subprojects)
+  - tracker_id (int): Tracker ID
+  - query_id (int): Query ID
+  - status_id (int): ['open', 'closed', '*', id]
+    If the filter is not specified the default value will be 'open'.
+  - assigned_to_id (int):_Assignee user ID
+    (or 'me' to get issues which are assigned to the user
+     whose credentials were used to access the Redmine REST API)
+  - cf_x: Custom field having ID 'x'.
+    The '~' sign can be used before the value to find issues
+    containing a string in a custom field.
 
+NB: operators containing ">", "<" or "=" should be hex-encoded so they're parsed correctly. Most evolved API clients will do that for you by default, but for the sake of clarity the following examples have been written with no such magic feature in mind.
+
+To fetch issues for a date range (uncrypted filter is "><2012-03-01|2012-03-07") :
+GET /issues.xml?created_on=%3E%3C2012-03-01|2012-03-07
+
+To fetch issues created after a certain date (uncrypted filter is ">=2012-03-01") :
+GET /issues.xml?created_on=%3E%3D2012-03-01
+
+Or before a certain date (uncrypted filter is "<= 2012-03-07") :
+GET /issues.xml?created_on=%3C%3D2012-03-07
+
+To fetch issues created after a certain timestamp (uncrypted filter is ">=2014-01-02T08:12:32Z") :
+GET /issues.xml?created_on=%3E%3D2014-01-02T08:12:32Z
+
+To fetch issues updated after a certain timestamp (uncrypted filter is ">=2014-01-02T08:12:32Z") :
+GET /issues.xml?updated_on=%3E%3D2014-01-02T08:12:32Z
 
 Configuration
 -------------

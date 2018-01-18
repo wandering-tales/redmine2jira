@@ -13,7 +13,12 @@ with open('HISTORY.rst') as history_file:
 
 requirements = [
     'Click>=6.0',
-    # TODO: put package requirements here
+    'click-default-group>=1.2',
+    'python-magic>=0.4,<0.5',
+    'python-redmine>=2.0,<2.1',
+    'six>=1.11',
+    'tabulate>=0.8',
+    'xlrd>=1.1,<1.2',
 ]
 
 setup_requirements = [

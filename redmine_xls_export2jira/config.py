@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import
+
+
 ##########################################################################
 #
 # Redmine XLS Export plugin to JIRA Importers plugin
@@ -33,7 +36,8 @@ REDMINE_API_KEY = '<put-administrator-user-redmine-api-key>'
 ALLOW_CROSS_PROJECT_ISSUE_RELATIONS = False
 
 # The value of this setting in Redmine comes from a selection list.
-# Here the list values are collapsed to a boolean using the following criterion:
+# Here the list values are collapsed to a boolean
+# using the following criterion:
 # - "disabled"   -> False
 # - Other values -> True
 ALLOW_CROSS_PROJECT_SUBTASKS = False
