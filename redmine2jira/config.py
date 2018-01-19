@@ -47,7 +47,7 @@ ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS = False
 
 # Overrides default settings with user defined ones, if any...
 try:
-    from redmine_xls_export2jira.config_local import *  # noqa
+    from redmine2jira.config_local import *  # noqa
 except ImportError:
     pass
 

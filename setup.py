@@ -29,7 +29,7 @@ test_requirements = [
 ]
 
 setup(
-    name='redmine_xls_export2jira',
+    name='redmine2jira',
     version='0.1.1',
     description='Export Redmine issues to file formats compatible '
                 'with the JIRA Importers plugin (JIM) ',
@@ -37,17 +37,17 @@ setup(
     author="Michele Cardone",
     author_email='michele.cardone82@gmail.com',
     url='https://github.com/wandering-tales/redmine2jira',
-    packages=find_packages(include=['redmine_xls_export2jira']),
+    packages=find_packages(include=['redmine2jira']),
     entry_points={
         'console_scripts': [
-            'redmine_xls_export2jira=redmine_xls_export2jira.cli:main'
+            'redmine2jira=redmine2jira.cli:main'
         ]
     },
     include_package_data=True,
     install_requires=requirements,
     license="MIT license",
     zip_safe=False,
-    keywords='redmine_xls_export2jira',
+    keywords='redmine2jira',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',

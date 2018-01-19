@@ -12,9 +12,9 @@ To install Redmine XLS Export plugin to JIRA Importers plugin, run this command 
 
 .. code-block:: console
 
-    $ pip install redmine_xls_export2jira
+    $ pip install redmine2jira
 
-This is the preferred method to install Redmine XLS Export plugin to JIRA Importers plugin, as it will always install the most recent stable release. 
+This is the preferred method to install Redmine XLS Export plugin to JIRA Importers plugin, as it will always install the most recent stable release.
 
 If you don't have `pip`_ installed, this `Python installation guide`_ can guide
 you through the process.

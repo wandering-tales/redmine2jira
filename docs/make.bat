@@ -115,9 +115,9 @@ if "%1" == "qthelp" (
 	echo.
 	echo.Build finished; now you can run "qcollectiongenerator" with the ^
 .qhcp project file in %BUILDDIR%/qthelp, like this:
-	echo.^> qcollectiongenerator %BUILDDIR%\qthelp\redmine_xls_export2jira.qhcp
+	echo.^> qcollectiongenerator %BUILDDIR%\qthelp\redmine2jira.qhcp
 	echo.To view the help file:
-	echo.^> assistant -collectionFile %BUILDDIR%\qthelp\redmine_xls_export2jira.ghc
+	echo.^> assistant -collectionFile %BUILDDIR%\qthelp\redmine2jira.ghc
 	goto end
 )
 

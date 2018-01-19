@@ -85,17 +85,17 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/redmine_xls_export2jira.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/redmine2jira.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/redmine_xls_export2jira.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/redmine2jira.qhc"
 
 devhelp:
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILDDIR)/devhelp
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/redmine_xls_export2jira"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/redmine_xls_export2jira"
+	@echo "# mkdir -p $$HOME/.local/share/devhelp/redmine2jira"
+	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/redmine2jira"
 	@echo "# devhelp"
 
 epub:

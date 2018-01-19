@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""Console script for redmine_xls_export2jira."""
+"""Console script for redmine2jira."""
 
 from __future__ import absolute_import
 
@@ -15,7 +15,7 @@ from six import text_type
 from six.moves.urllib.parse import unquote
 from tabulate import tabulate
 
-from redmine_xls_export2jira import config
+from redmine2jira import config
 
 
 redmine = Redmine(config.REDMINE_URL, key=config.REDMINE_API_KEY)
