@@ -62,7 +62,9 @@ def _get_issues_by_filter(query_string):
     filters = {k: unquote(v)
                for k, v in zip(*[iter([kv for p in query_string.split('&')
                                        for kv in p.split('=')])] * 2)}
+
     issues = redmine.issue.filter(**filters)
+
     # The 'issue_id' filter is honored starting from
     # a certain version of Redmine, but it's not known which.
     # If the 'issue_id' filter was in the initial query string,

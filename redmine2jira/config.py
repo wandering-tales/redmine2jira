@@ -101,8 +101,10 @@ ALLOW_CROSS_PROJECT_ISSUE_RELATIONS = False
 # The value of this setting in Redmine comes from a selection list.
 # Here the list values are collapsed to a boolean
 # using the following criterion:
+#
 # - "disabled"   -> False
 # - Other values -> True
+#
 ALLOW_CROSS_PROJECT_SUBTASKS = False
 
 ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS = False
