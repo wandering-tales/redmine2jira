@@ -20,6 +20,48 @@ from __future__ import absolute_import
 CHECK_ISSUE_ID_FILTER_AVAILABILITY = True
 ISSUE_ID_FILTER_AVAILABLE = True
 
+# Custom Redmine to Jira users mappings used during issue export.
+# The mapping is defined via usernames (login names). When no
+# mapping is defined for a referenced Redmine user, by default
+# the tool will map the Redmine username to the Jira one as it is.
+#
+# NOTE: The concept of "Jira user" is also extended to Jira Service Desk
+#       "portal only customers".
+#
+CUSTOM_USERS_MAPPINGS = {
+    #
+    # Example:
+    #
+    #    'alice.cooper': 'dave.grohl',
+    #    ...
+}
+
+# Custom Redmine groups to Jira users mappings used during issue export.
+# The only relations between issues and groups is via the "Assignee"
+# field, and only if issue assignment to groups is explicitly allowed
+# in the Redmine instance settings.
+# However, as Jira does not (and will not) support issue assignment to groups
+# (https://jira.atlassian.com/browse/JRASERVER-1397) one possible mapping
+# is from group names to user names. It's worth to check out the section
+# "Managing Issues via a User Account" in the following KB article:
+#
+# https://confluence.atlassian.com/jira/how-do-i-assign-issues-to-multiple-users-207489749.html#HowdoIassignissuestomultipleusers-ManagingIssuesviaaUserAccount
+#
+# Therefore in such scenario the mapping is defined between Redmine
+# group names and Jira usernames. When no mapping is defined for a
+# referenced group the tool will prompt the user to input a Jira username.
+#
+# NOTE: The concept of "Jira user" is also extended to Jira Service Desk
+#       "portal only customers".
+#
+CUSTOM_GROUPS_MAPPINGS = {
+    #
+    # Example:
+    #
+    #    'lead-developers': 'linus.torvalds',
+    #    ...
+}
+
 
 ###########
 # Redmine #
