@@ -1,5 +1,5 @@
 ==================================================
-Redmine XLS Export plugin to JIRA Importers plugin
+Redmine to JIRA Importers plugin
 ==================================================
 
 

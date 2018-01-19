@@ -55,7 +55,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Redmine XLS Export plugin to JIRA Importers plugin'
+project = u'Redmine to JIRA Importers plugin'
 copyright = u"2018, Michele Cardone"
 
 # The version info for the project you're documenting, acts as replacement
@@ -209,7 +209,7 @@ latex_elements = {
 # [howto/manual]).
 latex_documents = [
     ('index', 'redmine2jira.tex',
-     u'Redmine XLS Export plugin to JIRA Importers plugin Documentation',
+     u'Redmine to JIRA Importers plugin Documentation',
      u'Michele Cardone', 'manual'),
 ]
 
@@ -240,7 +240,7 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'redmine2jira',
-     u'Redmine XLS Export plugin to JIRA Importers plugin Documentation',
+     u'Redmine to JIRA Importers plugin Documentation',
      [u'Michele Cardone'], 1)
 ]
 
@@ -255,7 +255,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     ('index', 'redmine2jira',
-     u'Redmine XLS Export plugin to JIRA Importers plugin Documentation',
+     u'Redmine to JIRA Importers plugin Documentation',
      u'Michele Cardone',
      'redmine2jira',
      'One line description of project.',

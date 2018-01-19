@@ -1,4 +1,4 @@
-* Redmine XLS Export plugin to JIRA Importers plugin version:
+* Redmine to JIRA Importers plugin version:
 * Python version:
 * Operating System:
 

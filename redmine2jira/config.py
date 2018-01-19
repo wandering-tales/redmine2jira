@@ -5,7 +5,7 @@ from __future__ import absolute_import
 
 ##########################################################################
 #
-# Redmine XLS Export plugin to JIRA Importers plugin
+# Redmine to JIRA Importers plugin
 #
 # Copyright (C) 2018, Michele Cardone
 #

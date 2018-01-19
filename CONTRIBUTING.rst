@@ -38,8 +38,8 @@ and "help wanted" is open to whoever wants to implement it.
 Write Documentation
 ~~~~~~~~~~~~~~~~~~~
 
-Redmine XLS Export plugin to JIRA Importers plugin could always use more documentation, whether as part of the
-official Redmine XLS Export plugin to JIRA Importers plugin docs, in docstrings, or even on the web in blog posts,
+Redmine to JIRA Importers plugin could always use more documentation, whether as part of the
+official Redmine to JIRA Importers plugin docs, in docstrings, or even on the web in blog posts,
 articles, and such.
 
 Submit Feedback
