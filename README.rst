@@ -21,9 +21,8 @@ Redmine to JIRA Importers plugin
      :target: https://pyup.io/repos/github/wandering-tales/redmine2jira/
      :alt: Python 3
 
-Convert and merge XLS exports of the "Redmine XLS Export" plugin to files compatible with the JIRA Importers plugin (JIM).
+Export Redmine issues to file formats compatible with the JIRA Importers plugin (JIM).
 
-* *Redmine XLS Export* plugin: https://github.com/two-pack/redmine_xls_export
 * Free software: MIT license
 * Documentation: https://redmine2jira.readthedocs.io.
 
@@ -31,8 +30,7 @@ Convert and merge XLS exports of the "Redmine XLS Export" plugin to files compat
 Features
 --------
 
-The aim of the tool is to convert and merge all the Redmine exports
-obtained using the `Redmine XLS Export plugin`_
+The aim of the tool is to export Redmine issues, fetched using Redmine REST API,
 to a set of files which format is compatible with the JIRA Importers Plugin.
 
 The output of the tool, in most of the scenarios, is a single JSON file
@@ -58,15 +56,6 @@ CSV file. Subsequently, when all the Redmine issues have been imported
 in the target Jira instance that CSV file can be finally imported
 in order to update relations on all the existing issues.
 
-Time logs
-*********
-
-The only information `Redmine XLS Export plugin`_ is not able to include
-in its exports are the issues time logs, which need to be exported separately,
-for the same issue subset, using the related export feature already included
-in Redmine. The tool may be then instructed to integrate such time logs
-in the final JSON file.
-
 JIM file format specifications
 ******************************
 
@@ -90,12 +79,8 @@ Besides, the import from JSON feature is not completely stable.
 Prerequisites
 -------------
 
-The tool is compatible with the version `0.2.1.t10` of the `Redmine XLS Export plugin`_,
-which version, at the time of writing, is the latest one.
-
 * TODO Users already present in Jira
 * TODO Redmine REST API Enabled
-
 
 
 Usage
@@ -139,13 +124,11 @@ GET /issues.xml?created_on=%3E%3D2014-01-02T08:12:32Z
 To fetch issues updated after a certain timestamp (uncrypted filter is ">=2014-01-02T08:12:32Z") :
 GET /issues.xml?updated_on=%3E%3D2014-01-02T08:12:32Z
 
+
 Configuration
 -------------
 
 * TODO
-
-
-.. _Redmine XLS Export plugin: https://github.com/two-pack/redmine_xls_export
 
 
 Versioning
