@@ -6,26 +6,26 @@ Redmine XLS Export plugin to JIRA Importers plugin
 .. image:: https://img.shields.io/pypi/v/redmine_xls_export2jira.svg
         :target: https://pypi.python.org/pypi/redmine_xls_export2jira
 
-.. image:: https://travis-ci.org/wandering-tales/redmine-xls-export2jira.svg?branch=master
-        :target: https://travis-ci.org/wandering-tales/redmine-xls-export2jira
+.. image:: https://travis-ci.org/wandering-tales/redmine2jira.svg?branch=master
+        :target: https://travis-ci.org/wandering-tales/redmine2jira
 
-.. image:: https://readthedocs.org/projects/redmine-xls-export2jira/badge/?version=latest
-        :target: https://redmine-xls-export2jira.readthedocs.io/en/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/redmine2jira/badge/?version=latest
+        :target: https://redmine2jira.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
-.. image:: https://pyup.io/repos/github/wandering-tales/redmine-xls-export2jira/shield.svg
-     :target: https://pyup.io/repos/github/wandering-tales/redmine-xls-export2jira/
+.. image:: https://pyup.io/repos/github/wandering-tales/redmine2jira/shield.svg
+     :target: https://pyup.io/repos/github/wandering-tales/redmine2jira/
      :alt: Updates
 
-.. image:: https://pyup.io/repos/github/wandering-tales/redmine-xls-export2jira/python-3-shield.svg
-     :target: https://pyup.io/repos/github/wandering-tales/redmine-xls-export2jira/
+.. image:: https://pyup.io/repos/github/wandering-tales/redmine2jira/python-3-shield.svg
+     :target: https://pyup.io/repos/github/wandering-tales/redmine2jira/
      :alt: Python 3
 
 Convert and merge XLS exports of the "Redmine XLS Export" plugin to files compatible with the JIRA Importers plugin (JIM).
 
 * *Redmine XLS Export* plugin: https://github.com/two-pack/redmine_xls_export
 * Free software: MIT license
-* Documentation: https://redmine-xls-export2jira.readthedocs.io.
+* Documentation: https://redmine2jira.readthedocs.io.
 
 
 Features

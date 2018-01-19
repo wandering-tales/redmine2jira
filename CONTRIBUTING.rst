@@ -15,7 +15,7 @@ Types of Contributions
 Report Bugs
 ~~~~~~~~~~~
 
-Report bugs at https://github.com/wandering-tales/redmine-xls-export2jira/issues.
+Report bugs at https://github.com/wandering-tales/redmine2jira/issues.
 
 If you are reporting a bug, please include:
 
@@ -45,7 +45,7 @@ articles, and such.
 Submit Feedback
 ~~~~~~~~~~~~~~~
 
-The best way to send feedback is to file an issue at https://github.com/wandering-tales/redmine-xls-export2jira/issues.
+The best way to send feedback is to file an issue at https://github.com/wandering-tales/redmine2jira/issues.
 
 If you are proposing a feature:
 
@@ -57,17 +57,17 @@ If you are proposing a feature:
 Get Started!
 ------------
 
-Ready to contribute? Here's how to set up `redmine-xls-export2jira` for local development.
+Ready to contribute? Here's how to set up `redmine2jira` for local development.
 
-1. Fork the `redmine-xls-export2jira` repo on GitHub.
+1. Fork the `redmine2jira` repo on GitHub.
 2. Clone your fork locally::
 
-    $ git clone git@github.com:your_name_here/redmine-xls-export2jira.git
+    $ git clone git@github.com:your_name_here/redmine2jira.git
 
 3. Install your local copy into a virtualenv. Assuming you have virtualenvwrapper installed, this is how you set up your fork for local development::
 
-    $ mkvirtualenv redmine-xls-export2jira
-    $ cd redmine-xls-export2jira/
+    $ mkvirtualenv redmine2jira
+    $ cd redmine2jira/
     $ python setup.py develop
 
 4. Create a branch for local development::
@@ -102,7 +102,7 @@ Before you submit a pull request, check that it meets these guidelines:
    your new functionality into a function with a docstring, and add the
    feature to the list in README.rst.
 3. The pull request should work for Python 2.7, 3.3, 3.4, 3.5 and 3.6, and for PyPy. Check
-   https://travis-ci.org/wandering-tales/redmine-xls-export2jira/pull_requests
+   https://travis-ci.org/wandering-tales/redmine2jira/pull_requests
    and make sure that the tests pass for all supported Python versions.
 
 Tips

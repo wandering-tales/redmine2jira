@@ -31,13 +31,12 @@ test_requirements = [
 setup(
     name='redmine_xls_export2jira',
     version='0.1.1',
-    description='Convert and merge XLS exports of the "Redmine XLS Export" '
-                'plugin to files compatible with the '
-                'JIRA Importers plugin (JIM).',
+    description='Export Redmine issues to file formats compatible '
+                'with the JIRA Importers plugin (JIM) ',
     long_description=readme + '\n\n' + history,
     author="Michele Cardone",
     author_email='michele.cardone82@gmail.com',
-    url='https://github.com/wandering-tales/redmine-xls-export2jira',
+    url='https://github.com/wandering-tales/redmine2jira',
     packages=find_packages(include=['redmine_xls_export2jira']),
     entry_points={
         'console_scripts': [
