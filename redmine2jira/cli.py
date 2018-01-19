@@ -154,6 +154,15 @@ def list_users(user_status):
     _list_resources(users, sort_key='login', exclude_attrs=('created_on',))
 
 
+@list_resources.command('groups')
+def list_groups():
+    """List Redmine groups."""
+
+    groups = redmine.group.all()
+
+    _list_resources(groups, sort_key='name')
+
+
 @list_resources.command('projects')
 def list_projects():
     """List Redmine projects."""
