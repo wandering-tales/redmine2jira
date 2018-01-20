@@ -7,6 +7,7 @@ from __future__ import absolute_import
 import click
 
 from functools import reduce
+from itertools import chain
 from operator import and_, or_, itemgetter
 
 from click_default_group import DefaultGroup
@@ -135,6 +136,8 @@ def list_resources():
 
 
 @list_resources.command('users')
+@click.option('--all', 'user_status', flag_value=0,
+              help="Get all users")
 @click.option('--active', 'user_status', flag_value=1, default=True,
               help="Filter active users")
 @click.option('--locked', 'user_status', flag_value=3,
@@ -144,7 +147,10 @@ def list_users(user_status):
 
     users = None
 
-    if user_status == 1:
+    if user_status == 0:
+        # Get Redmine all users
+        users = chain(redmine.user.all(), redmine.user.filter(status=3))
+    elif user_status == 1:
         # Get Redmine active users
         users = redmine.user.all()
     elif user_status == 3:
