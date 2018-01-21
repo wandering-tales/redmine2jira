@@ -2,6 +2,23 @@
 History
 =======
 
+0.3.0 (2018-01-22)
+------------------
+
+Improvements
+************
+
+* Added early lookup of users and groups references within the issues being exported
+* Added command to list Redmine groups
+* Added option to list all Redmine users at once, including locked ones
+* Enhanced notes in configuration file
+
+Changes
+*******
+
+* Added requirements.txt for installation package requirements (useful for pyup.io)
+
+
 0.2.0 (2018-01-19)
 ------------------
 
