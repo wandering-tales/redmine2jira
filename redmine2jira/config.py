@@ -17,6 +17,27 @@ from __future__ import absolute_import
 # Core #
 ########
 
+# The export feature of this tool offer a way to filter issues
+# via a query string.Among the several filter parameters there's
+# one by issue ID(s).
+# However, depending on your Redmine version, it might not be
+# available in your Redmine REST API,
+# As it's not known which specific version introduced it,
+# the tool embeds a mechanism to guess if it's available or not.
+# If you don't know this detail we suggest to leave the
+# CHECK_ISSUE_ID_FILTER_AVAILABILITY setting to its default value:
+# every time the 'issue_id' filter is used the tool will automatically:
+#
+# - Verify its availability
+# - Prompt the result of the verification
+# - Propose to change the ISSUE_ID_FILTER_AVAILABLE setting
+#   according to the result
+# - Propose to disable CHECK_ISSUE_ID_FILTER_AVAILABILITY
+#   to avoid performing the same check again in the future
+#
+# For instance it may be useful to re-enable CHECK_ISSUE_ID_FILTER_AVAILABILITY
+# if the Redmine instance version changed.
+#
 CHECK_ISSUE_ID_FILTER_AVAILABILITY = True
 ISSUE_ID_FILTER_AVAILABLE = True
 

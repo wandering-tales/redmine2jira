@@ -87,11 +87,10 @@ def _get_issues_by_filter(query_string):
                     click.echo("The 'Issue ID' filter is not available!")
 
                     if config.ISSUE_ID_FILTER_AVAILABLE:
-                        click.echo("You may disable the "
-                                   "ISSUE_ID_FILTER_AVAILABLE flag in the "
-                                   "configuration and, eventually, "
-                                   "disable the previous check via the "
-                                   "CHECK_ISSUE_ID_FILTER_AVAILABILITY flag.")
+                        click.echo("You may disable both the "
+                                   "ISSUE_ID_FILTER_AVAILABLE and "
+                                   "CHECK_ISSUE_ID_FILTER_AVAILABILITY flags "
+                                   "in your settings.")
 
                 # Filter the resource set with the issue ID's in the filter
                 issues = [issue for issue in issues
