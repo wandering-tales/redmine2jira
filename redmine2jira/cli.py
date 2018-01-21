@@ -375,29 +375,29 @@ def list_custom_fields():
 def _list_resources(resource_set, sort_key,
                     format_dict=None, exclude_attrs=None):
     # Find resource attributes excluding relations with other resource types
-    scalar_attributes = [set((a for a, v in list(resource) if v is not None))
-                         for resource in resource_set]
+    scalar_attributes = (set((a for a, v in list(resource) if v is not None))
+                         for resource in resource_set)
 
-    # Compute a common subset of all the scalar attributes
-    common_scalar_attributes = reduce(and_, scalar_attributes)
+    # Compute a common subset among all the scalar attributes
+    common_scalar_attributes = reduce(and_, scalar_attributes, set())
+
+    # Declare base headers for all resource types
+    base_headers = ['id']
 
     # Exclude specific attributes
     if exclude_attrs:
+        base_headers[:] = [h for h in base_headers if h not in exclude_attrs]
         common_scalar_attributes -= set(exclude_attrs)
 
-    # Declare base attributes for all resource types
-    base_attributes = ['id']
+    # Appending sorting key to base headers
+    if sort_key not in base_headers:
+        base_headers.append(sort_key)
 
-    if sort_key in common_scalar_attributes:
-        base_attributes.append(sort_key)
-
-    # Sort the attributes by name,
-    # excluding 'id' and 'name' attributes:
-    # those will be inserted, respectively,
-    # at the beginning of the attribute list.
-    attributes = \
-        base_attributes + \
-        sorted(common_scalar_attributes - frozenset(base_attributes))
+    # Create table headers appending lexicographically sorted
+    # common attribute names to base headers list, which has
+    # already been statically ordered.
+    headers = \
+        base_headers + sorted(common_scalar_attributes - set(base_headers))
 
     def _format(key, resource):
         value = getattr(resource, key)
@@ -410,7 +410,7 @@ def _list_resources(resource_set, sort_key,
     # Build a "table" (list of dictionaries)
     # from all the resource instances,
     # using only the calculated attributes
-    resource_table = sorted(({a: _format(a, resource) for a in attributes}
+    resource_table = sorted(({h: _format(h, resource) for h in headers}
                              for resource in resource_set),
                             key=itemgetter(sort_key))
 
