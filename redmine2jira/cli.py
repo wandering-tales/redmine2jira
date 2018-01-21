@@ -43,7 +43,8 @@ def export_issues(output, query_string):
     else:
         issues = _get_all_issues()
 
-    click.echo("{:d} issues found!".format(len(issues)))
+    click.echo("{:d} issue{} found!"
+               .format(len(issues), "s" if len(issues) > 1 else ""))
 
     _check_referenced_users_groups(issues)
 
