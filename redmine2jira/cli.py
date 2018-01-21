@@ -4,11 +4,11 @@
 
 from __future__ import absolute_import
 
-import click
-
 from functools import reduce
 from itertools import chain
 from operator import and_, or_, itemgetter
+
+import click
 
 from click_default_group import DefaultGroup
 from redminelib import Redmine
