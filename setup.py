@@ -30,7 +30,7 @@ test_requirements = [
 
 setup(
     name='redmine2jira',
-    version='0.2.0',
+    version='0.3.0',
     description='Export Redmine issues to file formats compatible '
                 'with the JIRA Importers plugin (JIM) ',
     long_description=readme + '\n\n' + history,
