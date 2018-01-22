@@ -381,8 +381,7 @@ def _list_resources(resource_set, sort_key,
                          for resource in resource_set)
 
     # Compute a common subset among all the scalar attributes
-    common_scalar_attributes = reduce(and_, scalar_attributes, set())
-
+    common_scalar_attributes = reduce(and_, scalar_attributes)
     # Declare base headers for all resource types
     base_headers = ['id']
 
