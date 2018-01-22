@@ -6,7 +6,7 @@ from __future__ import absolute_import
 
 from functools import reduce
 from itertools import chain
-from operator import and_, or_, itemgetter
+from operator import and_, itemgetter
 
 import click
 
@@ -17,6 +17,10 @@ from six.moves.urllib.parse import unquote
 from tabulate import tabulate
 
 from redmine2jira import config
+
+
+MISSING_RESOURCE_MAPPINGS_MESSAGE = "Please define missing resource mappings:"
+MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX = " -> "
 
 
 redmine = Redmine(config.REDMINE_URL, key=config.REDMINE_API_KEY)
@@ -46,7 +50,22 @@ def export_issues(output, query_string):
     click.echo("{:d} issue{} found!"
                .format(len(issues), "s" if len(issues) > 1 else ""))
 
-    _check_referenced_users_groups(issues)
+    # Get all Redmine users and store them by ID
+    users = {user['id']: user for user in chain(redmine.user.all(),
+                                                redmine.user.filter(status=3))}
+
+    groups = None
+
+    if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS:
+        # Get all Redmine groups and store them by ID
+        groups = {group['id']: group for group in redmine.group.all()}
+
+    referenced_users_ids = _export_issues(issues, groups)
+    _list_unmapped_referenced_users(users, referenced_users_ids)
+
+    click.echo()
+    click.prompt("Press any key to continue...",
+                 prompt_suffix="", default="", show_default=False)
 
 
 def _get_issues_by_filter(query_string):
@@ -117,34 +136,38 @@ def _get_all_issues():
     return redmine.issue.all()
 
 
-def _check_referenced_users_groups(issues):
+def _export_issues(issues, groups):
     """
-    Collect all the referenced users and groups both in the issues properties
-    (author, assignee, users related custom fields) and related child resources
-    (watchers, attachments, journal entries, time entries).
+    Export issues and their relations to a JSON file which structure is
+    compatible with the JIRA Importers plugin (JIM).
 
-    All the users not explicitly mapped by the final user himself to specific
-    Jira users, via the CUSTOM_USERS_MAPPINGS setting, are printed in a table
-    fashion to warn the user to create them in the target Jira instance before
-    importing the issues.
+    All the issue relations which targets are not self-contained in the
+    result set are exported in a separate CSV file. Such file should be
+    imported whenever all the referenced issues (the endpoints of the
+    relations) are already present in the target Jira instance.
 
-    Similarly, all the groups not explicitly mapped by the final user himself
-    to specific Jira users, via the CUSTOM_GROUPS_MAPPINGS setting, are printed
-    in a table fashion, and for each of them the tool prompt the final user to
-    define a mapping to a Jira user.
+    During the export loop all the occurrences of several resource types
+    are mapped to Jira resource type instances. The mapping is primarily
+    achieved statically, via dictionaries defined in the local configuration
+    file by the final user for each resource type; the first time a resource
+    misses a static mapping, as a fallback, the final user is prompted to
+    interactively specify one, dynamically extending the initial static
+    dictionary.
 
-    :param issues: Fetched issues
+    The resource types that needs a mappings are the following:
+
+    - Users
+    - Groups
+
+    Though users references can be found both in the issues properties (author,
+    assignee, users related custom fields) and related child resources
+    (watchers, attachments, journal entries, time entries), groups references
+    can only be found in the "assignee" field.
+
+    :param issues: Issues to export
+    :param groups: All Redmine groups
+    :return: ID's of users referenced in the issues being exported
     """
-    # Get all users and store them by ID
-    users = {user['id']: user for user in chain(redmine.user.all(),
-                                                redmine.user.filter(status=3))}
-
-    groups = None
-
-    if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS:
-        # Get all groups and store them by ID
-        groups = {group['id']: group for group in redmine.group.all()}
-
     # Get users related issue custom field ID's
     users_related_issue_custom_field_ids = \
         [cf.id for cf in redmine.custom_field.all()
@@ -152,117 +175,111 @@ def _check_referenced_users_groups(issues):
          cf['field_format'] == 'user']
 
     referenced_users_ids = set()
-    referenced_groups_ids = set()
+    dynamic_mappings_needed = False
+    dynamic_groups_mappings = dict()
 
     for issue in issues:
-        # Keep track of the author
+        # Save author
         referenced_users_ids.add(issue['author']['id'])
 
         # If the issue has an assignee...
         if hasattr(issue, 'assigned_to'):
-            # Keep track of the assignee
+            # Save assignee
             assignee_id = issue['assigned_to']['id']
 
-            # If the issue assignee is a group...
+            # If the issue assignee is a Redmine group,
+            # and the latter has not explicitly mapped to a Jira user...
+
             if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and \
                assignee_id in groups:
-                referenced_groups_ids.add(assignee_id)
+                group_name = groups[assignee_id]['name']
+
+                if group_name not in config.CUSTOM_GROUPS_MAPPINGS and \
+                   group_name not in dynamic_groups_mappings:
+                    if not dynamic_mappings_needed:
+                        click.echo(MISSING_RESOURCE_MAPPINGS_MESSAGE)
+
+                        dynamic_mappings_needed = True
+
+                    assignee_jira_username = click.prompt(
+                        "[Redmine group name{}Jira username] {}"
+                        .format(MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX,
+                                group_name),
+                        prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
+
+                    dynamic_groups_mappings[group_name] = \
+                        assignee_jira_username
+
+                    # TODO Set value in the final JSON
+                    click.echo(assignee_jira_username)
             else:
                 referenced_users_ids.add(assignee_id)
 
-        # Keep track of watchers
-        referenced_users_ids |= \
-            {watcher['id'] for watcher in issue.watchers}
+        # Save watchers
+        for watcher in issue.watchers:
+            referenced_users_ids.add(watcher['id'])
 
-        # Keep track of attachments authors
-        referenced_users_ids |= \
-            {attachment['author']['id'] for attachment in issue.attachments}
+        # Save attachments
+        for attachment in issue.attachments:
+            referenced_users_ids.add(attachment['author']['id'])
 
-        # Keep track of journal entries authors
-        referenced_users_ids |= \
-            {journal['user']['id'] for journal in issue.journals}
+        # Save journal entries
+        for journal in issue.journals:
+            referenced_users_ids.add(journal['user']['id'])
 
-        # Keep track of time entries authors
-        referenced_users_ids |= \
-            {time_entry['user']['id'] for time_entry in issue.time_entries}
+        # Save time entries
+        for time_entry in issue.time_entries:
+            referenced_users_ids.add(time_entry['user']['id'])
 
-        # Keep track of users in users related issue custom fields
-        referenced_users_ids |= \
-            reduce(or_,
-                   (set(cf['value'])
-                    if getattr(cf, 'multiple', False)
+        # Save custom fields
+        for cf in getattr(issue, 'custom_fields', []):
+            if cf['id'] in users_related_issue_custom_field_ids:
+                referenced_users_ids |= \
+                    set(cf['value']) \
+                    if getattr(cf, 'multiple', False) \
                     else {cf['value']}
-                    for cf in getattr(issue, 'custom_fields', [])
-                    if cf['id'] in users_related_issue_custom_field_ids),
-                   set())
 
-    if referenced_users_ids:
-        # Retrieve the referenced Redmine user objects from their ID's.
-        # The purpose of this new list is to warn the final user to check
-        # their existence in the target Jira instance.
-        # Therefore if the final user willingly mapped Redmine users to Jira
-        # ones we need to exclude them from this list.
-        referenced_users = [v for k, v in users.items()
-                            if k in referenced_users_ids and
-                            v['login'] not in config.CUSTOM_USERS_MAPPINGS]
+    return referenced_users_ids
 
-        if referenced_users:
-            click.clear()
-            click.echo("The following users are referenced in the issues "
-                       "being exported:")
-            click.echo()
 
-            _list_resources(referenced_users,
-                            sort_key='login',
-                            exclude_attrs=('id',
-                                           'created_on',
-                                           'last_login_on'))
+def _list_unmapped_referenced_users(users, referenced_users_ids):
+    """
+    Print in a table fashion all the users not explicitly mapped to specific
+    Jira users, via the CUSTOM_USERS_MAPPINGS setting. The purpose is to warn
+    the final user to create them in the target Jira instance before importing
+    the issues.
 
-            click.echo()
-            click.echo("No static mappings has been defined for them via the "
-                       "CUSTOM_USERS_MAPPINGS setting.")
-            click.echo("Please check the above users already exist in your "
-                       "Jira instance before performing the import.")
-            click.echo()
-            click.prompt("Press any key to continue...",
-                         prompt_suffix="", default="", show_default=False)
+    :param users: All Redmine users, including locked ones
+    :param referenced_users_ids: ID's of Redmine users referenced
+                                 in issues being exported
+    """
+    # Retrieve all the Redmine users referenced in the issues being
+    # exported, excluding the ones that have been explicitly mapped
+    # to Jira users.
+    # The purpose of this list is to warn the final user to check their
+    # existence in the target Jira instance: if the final user willingly
+    # mapped a Redmine user to a Jira one obviously we need to exclude
+    # it from the list.
+    unmapped_referenced_users = \
+        [v for k, v in users.items()
+         if k in referenced_users_ids and
+            v['login'] not in config.CUSTOM_USERS_MAPPINGS]
 
-    if referenced_groups_ids:
-        # Retrieve the referenced Redmine group objects from their ID's.
-        # The purpose of this new list is to warn the final user to check
-        # their existence as users in the target Jira instance.
-        # Therefore if the final user willingly mapped Redmine groups to Jira
-        # users we need to exclude them from this list.
-        referenced_groups = [v for k, v in groups.items()
-                             if k in referenced_groups_ids and
-                             v['name'] not in config.CUSTOM_GROUPS_MAPPINGS]
+    if unmapped_referenced_users:
+        click.echo("Loading users referenced in the exported issues...")
+        click.echo()
 
-        if referenced_groups:
-            click.clear()
-            click.echo("The following groups have been set as assignees "
-                       "for some of the issues being exported:")
-            click.echo()
+        _list_resources(unmapped_referenced_users,
+                        sort_key='login',
+                        exclude_attrs=('id',
+                                       'created_on',
+                                       'last_login_on'))
 
-            _list_resources(referenced_groups,
-                            sort_key='name',
-                            exclude_attrs=('id',))
-
-            click.echo()
-            click.echo("As Jira does not support issue assignment to groups "
-                       "please associate each Redmine group to an existing "
-                       "Jira user:")
-            click.echo()
-
-            dynamic_groups_mapping = {}
-
-            for group in referenced_groups:
-                dynamic_groups_mapping[group['name']] = \
-                    click.prompt(group['name'], prompt_suffix=" -> ")
-
-            click.echo()
-            click.echo("In order to avoid to interactively define such "
-                       "associations further you can define them statically "
-                       "via the CUSTOM_GROUPS_MAPPINGS setting.")
+        click.echo()
+        click.echo("No static mappings have been defined for them via the "
+                   "CUSTOM_USERS_MAPPINGS setting.")
+        click.echo("Ensure the above users already exist in your "
+                   "Jira instance before starting the import.")
 
 
 @main.group('list')
