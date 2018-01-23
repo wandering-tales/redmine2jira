@@ -12,6 +12,7 @@ import click
 
 from click_default_group import DefaultGroup
 from redminelib import Redmine
+from redminelib.resultsets import ResourceSet
 from six import text_type
 from six.moves.urllib.parse import unquote
 from tabulate import tabulate
@@ -394,8 +395,10 @@ def list_custom_fields():
 def _list_resources(resource_set, sort_key,
                     format_dict=None, exclude_attrs=None):
     # Find resource attributes excluding relations with other resource types
-    scalar_attributes = (set((a for a, v in list(resource) if v is not None))
-                         for resource in resource_set)
+    scalar_attributes = \
+        (set((a for a in dir(resource)
+              if not isinstance(getattr(resource, a), ResourceSet)))
+         for resource in resource_set)
 
     # Compute a common subset among all the scalar attributes
     common_scalar_attributes = reduce(and_, scalar_attributes)
