@@ -62,11 +62,14 @@ def export_issues(output, query_string):
         groups = {group.id: group for group in redmine.group.all()}
 
     referenced_users_ids = _export_issues(issues, groups)
+
+    click.echo("Issues exported in '{}'!".format(output.name))
+
     _list_unmapped_referenced_users(users, referenced_users_ids)
 
     click.echo()
-    click.prompt("Press any key to continue...",
-                 prompt_suffix="", default="", show_default=False)
+    click.echo()
+    click.echo("Good Bye!")
 
 
 def _get_issues_by_filter(query_string):
