@@ -178,71 +178,154 @@ def _export_issues(issues, groups):
          if cf.customized_type == 'issue' and cf.field_format == 'user'}
 
     referenced_users_ids = set()
-    dynamic_mappings_needed = False
     dynamic_groups_mappings = dict()
 
     for issue in issues:
-        # Save author
-        referenced_users_ids.add(issue.author.id)
+        _save_author(issue.author.id, referenced_users_ids)
 
         # If the issue has an assignee...
         if hasattr(issue, 'assigned_to'):
-            # Save assignee
-            assignee_id = issue.assigned_to.id
+            _save_assignee(issue.assigned_to.id, referenced_users_ids, groups,
+                           bool(dynamic_groups_mappings),
+                           dynamic_groups_mappings)
 
-            # If the issue assignee is a Redmine group,
-            # and the latter has not explicitly mapped to a Jira user...
+        _save_watchers(issue.watchers, referenced_users_ids)
+        _save_attachments(issue.attachments, referenced_users_ids)
+        _save_journals(issue.journals, referenced_users_ids)
+        _save_time_entries(issue.time_entries, referenced_users_ids)
 
-            if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and \
-               assignee_id in groups:
-                group_name = groups[assignee_id].name
-
-                if group_name not in config.CUSTOM_GROUPS_MAPPINGS and \
-                   group_name not in dynamic_groups_mappings:
-                    if not dynamic_mappings_needed:
-                        click.echo(MISSING_RESOURCE_MAPPINGS_MESSAGE)
-
-                        dynamic_mappings_needed = True
-
-                    assignee_jira_username = click.prompt(
-                        "[Redmine group name{}Jira username] {}"
-                        .format(MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX,
-                                group_name),
-                        prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
-
-                    dynamic_groups_mappings[group_name] = \
-                        assignee_jira_username
-
-                    # TODO Set value in the final JSON
-                    click.echo(assignee_jira_username)
-            else:
-                referenced_users_ids.add(assignee_id)
-
-        # Save watchers
-        for watcher in issue.watchers:
-            referenced_users_ids.add(watcher.id)
-
-        # Save attachments
-        for attachment in issue.attachments:
-            referenced_users_ids.add(attachment.author.id)
-
-        # Save journal entries
-        for journal in issue.journals:
-            referenced_users_ids.add(journal.user.id)
-
-        # Save time entries
-        for time_entry in issue.time_entries:
-            referenced_users_ids.add(time_entry.user.id)
-
-        # Save custom fields
-        for cf in getattr(issue, 'custom_fields', []):
-            if cf.id in users_related_issue_custom_field_ids:
-                referenced_users_ids |= \
-                    set(cf.value) \
-                    if getattr(cf, 'multiple', False) \
-                    else {cf.value}
+        # If the issue has custom fields...
+        if hasattr(issue, 'custom_fields'):
+            _save_custom_fields(issue.custom_fields,
+                                referenced_users_ids,
+                                users_related_issue_custom_field_ids)
 
     return referenced_users_ids
+
+
+
+
+
+
+
+
+def _save_author(author_id, referenced_users_ids):
+    """
+    Save issue author in the export dictionary.
+
+    :param author_id: ID of the issue author
+    :param referenced_users_ids: Set of ID's of referenced users
+                                 found so far in the issue resource set
+    """
+    referenced_users_ids.add(author_id)
+
+
+def _save_assignee(assignee_id, referenced_users_ids, groups,
+                   dynamic_mappings_defined, dynamic_groups_mappings):
+    """
+    Save issue assignee in the export dictionary.
+
+    :param assignee_id: ID of the issue assignee.
+                        The ID may belong either to a user or a group.
+    :param referenced_users_ids: Set of ID's of referenced users
+                                 found so far in the issue resource set.
+    :param groups: All Redmine groups
+    :param dynamic_mappings_defined: Flag indicating that at least one missing
+                                     resource mapping has been dynamically
+                                     defined at runtime by the final user.
+    :param dynamic_groups_mappings: Dictionary of the dynamic groups mappings
+                                    defined so far by the final user.
+    """
+    # If the issue assignee is a Redmine group...
+    if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and \
+       assignee_id in groups:
+        group_name = groups[assignee_id].name
+
+        # if the group has not explicitly mapped to a Jira user,
+        # either statically or dynamically...
+        if group_name not in config.CUSTOM_GROUPS_MAPPINGS and \
+           group_name not in dynamic_groups_mappings:
+            if not dynamic_mappings_defined:
+                click.echo(MISSING_RESOURCE_MAPPINGS_MESSAGE)
+
+            assignee_jira_username = click.prompt(
+                "[Redmine group name{}Jira username] {}"
+                .format(MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX, group_name),
+                prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
+
+            dynamic_groups_mappings[group_name] = assignee_jira_username
+
+            # TODO Set value in the export dictionary
+            click.echo(assignee_jira_username)
+    else:
+        referenced_users_ids.add(assignee_id)
+
+
+def _save_watchers(watchers, referenced_users_ids):
+    """
+    Save issue watchers to export dictionary.
+
+    :param watchers: Issue watchers
+    :param referenced_users_ids: Set of ID's of referenced users
+                                 found so far in the issue resource set.
+    """
+    for watcher in watchers:
+        referenced_users_ids.add(watcher.id)
+
+
+def _save_attachments(attachments, referenced_users_ids):
+    """
+    Save issue attachments to export dictionary.
+
+    :param attachments: Issue attachments
+    :param referenced_users_ids: Set of ID's of referenced users
+                                 found so far in the issue resource set.
+    """
+    for attachment in attachments:
+        referenced_users_ids.add(attachment.author.id)
+
+
+def _save_journals(journals, referenced_users_ids):
+    """
+    Save issue journals to export dictionary.
+
+    :param journals: Issue journals
+    :param referenced_users_ids: Set of ID's of referenced users
+                                 found so far in the issue resource set.
+    """
+    for journal in journals:
+        referenced_users_ids.add(journal.user.id)
+
+
+def _save_time_entries(time_entries, referenced_users_ids):
+    """
+    Save issue time entries to export dictionary.
+
+    :param time_entries: Issue time entries
+    :param referenced_users_ids: Set of ID's of referenced users
+                                 found so far in the issue resource set.
+    """
+    for time_entry in time_entries:
+        referenced_users_ids.add(time_entry.user.id)
+
+
+def _save_custom_fields(custom_fields, referenced_users_ids,
+                        users_related_issue_custom_field_ids):
+    """
+    Save issue custom fields to export dictionary.
+
+    :param custom_fields: Issue custom fields
+    :param referenced_users_ids: Set of ID's of referenced users
+                                 found so far in the issue resource set.
+    :param users_related_issue_custom_field_ids: Set of ID's of all the users
+                                                 related issue custom fields.
+    """
+    for custom_field in (cf for cf in custom_fields
+                         if cf.id in users_related_issue_custom_field_ids):
+        referenced_users_ids |= \
+            set(custom_field.value) \
+            if getattr(custom_field, 'multiple', False) \
+            else {custom_field.value}
 
 
 def _list_unmapped_referenced_users(users, referenced_users_ids):
