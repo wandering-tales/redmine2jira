@@ -174,8 +174,8 @@ def _export_issues(issues, groups):
     """
     # Get users related issue custom field ID's
     users_related_issue_custom_field_ids = \
-        [cf.id for cf in redmine.custom_field.all()
-         if cf.customized_type == 'issue' and cf.field_format == 'user']
+        {cf.id for cf in redmine.custom_field.all()
+         if cf.customized_type == 'issue' and cf.field_format == 'user'}
 
     referenced_users_ids = set()
     dynamic_mappings_needed = False
