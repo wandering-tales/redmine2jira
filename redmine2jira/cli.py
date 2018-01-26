@@ -334,9 +334,10 @@ def list_projects():
 
         :param project: Project Resource
         :param full_name: Full name of the project used in the recursion
-        :return: Project full name
+        :return: Project full name (at the end of recursion)
         """
-        if full_name:
+        # If it's not the first level of recursion...
+        if full_name != project['name']:
             full_name = "{} / {}".format(project['name'], full_name)
         else:
             full_name = project['name']
