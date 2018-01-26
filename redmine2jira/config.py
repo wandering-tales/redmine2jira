@@ -83,6 +83,19 @@ CUSTOM_GROUPS_MAPPINGS = {
     #    ...
 }
 
+# Custom Redmine to Jira projects mappings used during issue export.
+# The mapping is defined between Redmine project identifiers and
+# Jira project keys. When no mapping is defined for a referenced project
+# the tool will prompt the user to input a Jira project key.
+#
+CUSTOM_PROJECTS_MAPPINGS = {
+    #
+    # Example:
+    #
+    #    'my-cool-project': 'MCP',
+    #    ...
+}
+
 
 ###########
 # Redmine #

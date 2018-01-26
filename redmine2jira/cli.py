@@ -61,7 +61,10 @@ def export_issues(output, query_string):
         # Get all Redmine groups and store them by ID
         groups = {group.id: group for group in redmine.group.all()}
 
-    referenced_users_ids = _export_issues(issues, groups)
+    # Get all Redmine active projects and store them by ID
+    projects = {project.id: project for project in redmine.project.all()}
+
+    referenced_users_ids = _export_issues(issues, groups, projects)
 
     click.echo("Issues exported in '{}'!".format(output.name))
 
@@ -140,7 +143,7 @@ def _get_all_issues():
     return redmine.issue.all()
 
 
-def _export_issues(issues, groups):
+def _export_issues(issues, groups, projects):
     """
     Export issues and their relations to a JSON file which structure is
     compatible with the JIRA Importers plugin (JIM).
@@ -162,14 +165,18 @@ def _export_issues(issues, groups):
 
     - Users
     - Groups
+    - Projects
 
     Though users references can be found both in the issues properties (author,
     assignee, users related custom fields) and related child resources
     (watchers, attachments, journal entries, time entries), groups references
     can only be found in the "assignee" field.
 
+    Each issue, instead, has always a reference to a single project.
+
     :param issues: Issues to export
     :param groups: All Redmine groups
+    :param projects: All Redmine active projects
     :return: ID's of users referenced in the issues being exported
     """
     # Get users related issue custom field ID's
@@ -178,15 +185,22 @@ def _export_issues(issues, groups):
          if cf.customized_type == 'issue' and cf.field_format == 'user'}
 
     referenced_users_ids = set()
+    dynamic_projects_mappings = dict()
     dynamic_groups_mappings = dict()
 
     for issue in issues:
+        _save_project(issue.project.id, projects,
+                      bool(dynamic_projects_mappings or
+                           dynamic_groups_mappings),
+                      dynamic_projects_mappings)
+
         _save_author(issue.author.id, referenced_users_ids)
 
         # If the issue has an assignee...
         if hasattr(issue, 'assigned_to'):
             _save_assignee(issue.assigned_to.id, referenced_users_ids, groups,
-                           bool(dynamic_groups_mappings),
+                           bool(dynamic_projects_mappings or
+                                dynamic_groups_mappings),
                            dynamic_groups_mappings)
 
         _save_watchers(issue.watchers, referenced_users_ids)
@@ -203,10 +217,38 @@ def _export_issues(issues, groups):
     return referenced_users_ids
 
 
+def _save_project(project_id, projects,
+                  dynamic_mappings_defined,
+                  dynamic_projects_mappings):
+    """
+    Save issue project in the export dictionary.
 
+    :param project_id: ID of the issue project.
+    :param projects: All Redmine projects
+    :param dynamic_mappings_defined: Flag indicating that at least one missing
+                                     resource mapping has been dynamically
+                                     defined at runtime by the final user.
+    :param dynamic_projects_mappings: Dictionary of the dynamic project
+                                      mappings defined so far by the final
+                                      user.
+    """
+    project_identifier = projects[project_id].identifier
 
+    if project_identifier not in config.CUSTOM_PROJECTS_MAPPINGS and \
+       project_identifier not in dynamic_projects_mappings:
+        if not dynamic_mappings_defined:
+            click.echo(MISSING_RESOURCE_MAPPINGS_MESSAGE)
 
+        project_jira_key = click.prompt(
+            "[Redmine project identifier{}Jira project key] {}"
+            .format(MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX,
+                    project_identifier),
+            prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
 
+        dynamic_projects_mappings[project_identifier] = project_jira_key
+
+        # TODO Set value in the final JSON
+        click.echo(project_jira_key)
 
 
 def _save_author(author_id, referenced_users_ids):
