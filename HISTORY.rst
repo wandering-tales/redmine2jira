@@ -2,6 +2,23 @@
 History
 =======
 
+0.3.1 (2018-01-26)
+------------------
+
+Improvements
+************
+
+* Referenced users and groups are collected on-the-fly while exporting issues. This increases performance.
+* Minor enhancements in the console output for the completion of the export
+
+Fixes
+*****
+
+* Fix recursive function used in ``list projects`` command to build the full project hierarchical name
+* Fixed a bug affecting all the ``list`` commands that caused some resource relations being included in the tables
+* Fixed another minor bug affecting all the ``list`` commands
+
+
 0.3.0 (2018-01-22)
 ------------------
 
