@@ -52,14 +52,14 @@ def export_issues(output, query_string):
                .format(len(issues), "s" if len(issues) > 1 else ""))
 
     # Get all Redmine users and store them by ID
-    users = {user['id']: user for user in chain(redmine.user.all(),
-                                                redmine.user.filter(status=3))}
+    users = {user.id: user for user in chain(redmine.user.all(),
+                                             redmine.user.filter(status=3))}
 
     groups = None
 
     if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS:
         # Get all Redmine groups and store them by ID
-        groups = {group['id']: group for group in redmine.group.all()}
+        groups = {group.id: group for group in redmine.group.all()}
 
     referenced_users_ids = _export_issues(issues, groups)
     _list_unmapped_referenced_users(users, referenced_users_ids)
@@ -172,8 +172,7 @@ def _export_issues(issues, groups):
     # Get users related issue custom field ID's
     users_related_issue_custom_field_ids = \
         [cf.id for cf in redmine.custom_field.all()
-         if cf['customized_type'] == 'issue' and
-         cf['field_format'] == 'user']
+         if cf.customized_type == 'issue' and cf.field_format == 'user']
 
     referenced_users_ids = set()
     dynamic_mappings_needed = False
@@ -181,19 +180,19 @@ def _export_issues(issues, groups):
 
     for issue in issues:
         # Save author
-        referenced_users_ids.add(issue['author']['id'])
+        referenced_users_ids.add(issue.author.id)
 
         # If the issue has an assignee...
         if hasattr(issue, 'assigned_to'):
             # Save assignee
-            assignee_id = issue['assigned_to']['id']
+            assignee_id = issue.assigned_to.id
 
             # If the issue assignee is a Redmine group,
             # and the latter has not explicitly mapped to a Jira user...
 
             if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and \
                assignee_id in groups:
-                group_name = groups[assignee_id]['name']
+                group_name = groups[assignee_id].name
 
                 if group_name not in config.CUSTOM_GROUPS_MAPPINGS and \
                    group_name not in dynamic_groups_mappings:
@@ -218,27 +217,27 @@ def _export_issues(issues, groups):
 
         # Save watchers
         for watcher in issue.watchers:
-            referenced_users_ids.add(watcher['id'])
+            referenced_users_ids.add(watcher.id)
 
         # Save attachments
         for attachment in issue.attachments:
-            referenced_users_ids.add(attachment['author']['id'])
+            referenced_users_ids.add(attachment.author.id)
 
         # Save journal entries
         for journal in issue.journals:
-            referenced_users_ids.add(journal['user']['id'])
+            referenced_users_ids.add(journal.user.id)
 
         # Save time entries
         for time_entry in issue.time_entries:
-            referenced_users_ids.add(time_entry['user']['id'])
+            referenced_users_ids.add(time_entry.user.id)
 
         # Save custom fields
         for cf in getattr(issue, 'custom_fields', []):
-            if cf['id'] in users_related_issue_custom_field_ids:
+            if cf.id in users_related_issue_custom_field_ids:
                 referenced_users_ids |= \
-                    set(cf['value']) \
+                    set(cf.value) \
                     if getattr(cf, 'multiple', False) \
-                    else {cf['value']}
+                    else {cf.value}
 
     return referenced_users_ids
 
@@ -264,7 +263,7 @@ def _list_unmapped_referenced_users(users, referenced_users_ids):
     unmapped_referenced_users = \
         [v for k, v in users.items()
          if k in referenced_users_ids and
-            v['login'] not in config.CUSTOM_USERS_MAPPINGS]
+            v.login not in config.CUSTOM_USERS_MAPPINGS]
 
     if unmapped_referenced_users:
         click.echo("Loading users referenced in the exported issues...")
@@ -337,13 +336,13 @@ def list_projects():
         :return: Project full name (at the end of recursion)
         """
         # If it's not the first level of recursion...
-        if full_name != project['name']:
-            full_name = "{} / {}".format(project['name'], full_name)
+        if full_name != project.name:
+            full_name = "{} / {}".format(project.name, full_name)
         else:
-            full_name = project['name']
+            full_name = project.name
 
         if hasattr(project, 'parent'):
-            parent = redmine.project.get(project['parent']['id'])
+            parent = redmine.project.get(project.parent.id)
             full_name = get_project_full_name(parent, full_name)
 
         return full_name
@@ -363,7 +362,7 @@ def list_trackers():
 
     _list_resources(trackers,
                     sort_key='name',
-                    exclude_attrs={'default_status': lambda r, v: v['name']})
+                    exclude_attrs={'default_status': lambda r, v: v.name})
 
 
 @list_resources.command('queries')
