@@ -2,6 +2,21 @@
 History
 =======
 
+0.4.0 (2018-01-26)
+------------------
+
+New features
+************
+
+* Added dynamic project mappings management
+
+Improvements
+************
+
+* Refactored specific methods to save issue resources
+* Minor optimizations
+
+
 0.3.1 (2018-01-26)
 ------------------
 
@@ -54,7 +69,7 @@ Changes
   Since the files exported by the plugin lack some information needed to produce files compatible with the Jira Importer Plugin (JIM),
   several calls to the Redmine REST API were needed to compensate the data. Hence to avoid the effort to merge the data coming from
   two difference sources I decided to rely solely on Redmine REST API to fetch all the needed data.
-  
+
   This is a major project scope change that implied, in turn, the following modifications:
 
   - Renamed GitHub repository from "redmine-xls-export2jira" to "redmine2jira"
