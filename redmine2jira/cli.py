@@ -20,7 +20,7 @@ from tabulate import tabulate
 from redmine2jira import config
 
 
-MISSING_RESOURCE_MAPPINGS_MESSAGE = "Please define missing resource mappings:"
+MISSING_RESOURCE_MAPPINGS_MESSAGE = "Resource value mappings definition"
 MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX = " -> "
 
 
