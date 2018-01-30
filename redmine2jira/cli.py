@@ -183,6 +183,9 @@ def _export_issues(issues, groups, projects):
     dynamic_groups_mappings = dict()
 
     for issue in issues:
+        # The issue project must be saved before everything else.
+        # That's because all the issues entities must be children of a project
+        # entity in the export dictionary.
         _save_project(issue.project.id, projects,
                       bool(dynamic_projects_mappings or
                            dynamic_groups_mappings),
