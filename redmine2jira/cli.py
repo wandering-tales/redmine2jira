@@ -51,17 +51,16 @@ def export_issues(output, query_string):
     click.echo("{:d} issue{} found!"
                .format(len(issues), "s" if len(issues) > 1 else ""))
 
-    # Get all Redmine users and store them by ID
+    # Get all Redmine users, groups, projects and store them by ID
+
     users = {user.id: user for user in chain(redmine.user.all(),
                                              redmine.user.filter(status=3))}
 
     groups = None
 
     if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS:
-        # Get all Redmine groups and store them by ID
         groups = {group.id: group for group in redmine.group.all()}
 
-    # Get all Redmine active projects and store them by ID
     projects = {project.id: project for project in redmine.project.all()}
 
     referenced_users_ids = _export_issues(issues, groups, projects)
