@@ -155,7 +155,7 @@ def _export_issues(issues, groups, projects):
     interactively specify one, dynamically extending the initial static
     dictionary.
 
-    The resource types that needs a mappings are the following:
+    The resource types that support custom mappings are the following:
 
     - Users
     - Groups
@@ -166,11 +166,9 @@ def _export_issues(issues, groups, projects):
     (watchers, attachments, journal entries, time entries), groups references
     can only be found in the "assignee" field.
 
-    Each issue, instead, has always a reference to a single project.
-
     :param issues: Issues to export
     :param groups: All Redmine groups
-    :param projects: All Redmine active projects
+    :param projects: All Redmine projects
     :return: ID's of users referenced in the issues being exported
     """
     # Get users related issue custom field ID's
@@ -220,14 +218,14 @@ def _save_project(project_id, projects,
     """
     Save issue project in the export dictionary.
 
-    :param project_id: ID of the issue project.
+    :param project_id: ID of the issue project
     :param projects: All Redmine projects
     :param dynamic_mappings_defined: Flag indicating that at least one missing
                                      resource mapping has been dynamically
-                                     defined at runtime by the final user.
+                                     defined at runtime by the final user
     :param dynamic_projects_mappings: Dictionary of the dynamic project
                                       mappings defined so far by the final
-                                      user.
+                                      user
     """
     project_identifier = projects[project_id].identifier
 
@@ -268,16 +266,16 @@ def _save_assignee(assignee_id, referenced_users_ids, groups,
     enabled in Redmine the assignee may also be a
     group.
 
-    :param assignee_id: ID of the issue assignee.
-                        The ID may belong either to a user or a group.
+    :param assignee_id: ID of the issue assignee, which may refer either
+                        to a user or a group
     :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set.
+                                 found so far in the issue resource set
     :param groups: All Redmine groups
     :param dynamic_mappings_defined: Flag indicating that at least one missing
                                      resource mapping has been dynamically
-                                     defined at runtime by the final user.
+                                     defined at runtime by the final user
     :param dynamic_groups_mappings: Dictionary of the dynamic groups mappings
-                                    defined so far by the final user.
+                                    defined so far by the final user
     """
     # If the issue assignee is a Redmine group...
     if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and \
@@ -310,7 +308,7 @@ def _save_watchers(watchers, referenced_users_ids):
 
     :param watchers: Issue watchers
     :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set.
+                                 found so far in the issue resource set
     """
     for watcher in watchers:
         referenced_users_ids.add(watcher.id)
@@ -322,7 +320,7 @@ def _save_attachments(attachments, referenced_users_ids):
 
     :param attachments: Issue attachments
     :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set.
+                                 found so far in the issue resource set
     """
     for attachment in attachments:
         referenced_users_ids.add(attachment.author.id)
@@ -334,7 +332,7 @@ def _save_journals(journals, referenced_users_ids):
 
     :param journals: Issue journals
     :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set.
+                                 found so far in the issue resource set
     """
     for journal in journals:
         referenced_users_ids.add(journal.user.id)
@@ -346,7 +344,7 @@ def _save_time_entries(time_entries, referenced_users_ids):
 
     :param time_entries: Issue time entries
     :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set.
+                                 found so far in the issue resource set
     """
     for time_entry in time_entries:
         referenced_users_ids.add(time_entry.user.id)
@@ -359,9 +357,9 @@ def _save_custom_fields(custom_fields, referenced_users_ids,
 
     :param custom_fields: Issue custom fields
     :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set.
+                                 found so far in the issue resource set
     :param users_related_issue_custom_field_ids: Set of ID's of all the users
-                                                 related issue custom fields.
+                                                 related issue custom fields
     """
     for custom_field in (cf for cf in custom_fields
                          if cf.id in users_related_issue_custom_field_ids):
@@ -378,7 +376,7 @@ def _list_unmapped_referenced_users(users, referenced_users_ids):
     the final user to create them in the target Jira instance before importing
     the issues.
 
-    :param users: All Redmine users, including locked ones
+    :param users: All Redmine users
     :param referenced_users_ids: ID's of Redmine users referenced
                                  in issues being exported
     """
