@@ -398,9 +398,7 @@ def _list_unmapped_referenced_users(users, referenced_users_ids):
 
         _list_resources(unmapped_referenced_users,
                         sort_key='login',
-                        exclude_attrs=('id',
-                                       'created_on',
-                                       'last_login_on'))
+                        exclude_attrs=('id', 'created_on', 'last_login_on'))
 
         click.echo()
         click.echo("No static mappings have been defined for them via the "
