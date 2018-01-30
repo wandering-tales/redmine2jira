@@ -49,7 +49,7 @@ ISSUE_ID_FILTER_AVAILABLE = True
 # NOTE: The concept of "Jira user" is also extended to Jira Service Desk
 #       "portal only customers".
 #
-CUSTOM_USERS_MAPPINGS = {
+CUSTOM_REDMINE_USER_JIRA_USER_MAPPINGS = {
     #
     # Example:
     #
@@ -75,7 +75,7 @@ CUSTOM_USERS_MAPPINGS = {
 # NOTE: The concept of "Jira user" is also extended to Jira Service Desk
 #       "portal only customers".
 #
-CUSTOM_GROUPS_MAPPINGS = {
+CUSTOM_REDMINE_GROUP_JIRA_USER_MAPPINGS = {
     #
     # Example:
     #
@@ -88,7 +88,7 @@ CUSTOM_GROUPS_MAPPINGS = {
 # Jira project keys. When no mapping is defined for a referenced project
 # the tool will prompt the user to input a Jira project key.
 #
-CUSTOM_PROJECTS_MAPPINGS = {
+CUSTOM_REDMINE_PROJECT_JIRA_PROJECT_MAPPINGS = {
     #
     # Example:
     #

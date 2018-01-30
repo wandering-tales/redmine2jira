@@ -231,7 +231,7 @@ def _save_project(project_id, projects,
     """
     project_identifier = projects[project_id].identifier
 
-    if project_identifier not in config.CUSTOM_PROJECTS_MAPPINGS and \
+    if project_identifier not in config.CUSTOM_REDMINE_PROJECT_JIRA_PROJECT_MAPPINGS and \
        project_identifier not in dynamic_projects_mappings:
         if not dynamic_mappings_defined:
             click.echo(MISSING_RESOURCE_MAPPINGS_MESSAGE)
@@ -287,7 +287,7 @@ def _save_assignee(assignee_id, groups,
 
         # if the group has not explicitly mapped to a Jira user,
         # either statically or dynamically...
-        if group_name not in config.CUSTOM_GROUPS_MAPPINGS and \
+        if group_name not in config.CUSTOM_REDMINE_GROUP_JIRA_USER_MAPPINGS and \
            group_name not in dynamic_groups_mappings:
             if not dynamic_mappings_defined:
                 click.echo(MISSING_RESOURCE_MAPPINGS_MESSAGE)
@@ -393,7 +393,7 @@ def _list_unmapped_referenced_users(users, referenced_users_ids):
     unmapped_referenced_users = \
         [v for k, v in users.items()
          if k in referenced_users_ids and
-            v.login not in config.CUSTOM_USERS_MAPPINGS]
+            v.login not in config.CUSTOM_REDMINE_USER_JIRA_USER_MAPPINGS]
 
     if unmapped_referenced_users:
         click.echo("Loading users referenced in the exported issues...")
