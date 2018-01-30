@@ -125,12 +125,6 @@ def _get_issues_by_filter(query_string):
                 issues = [issue for issue in issues
                           if issue.id in issues_ids_filter]
 
-    # FIXME: Debug
-    if len(issues) == 1:
-        for issue in issues:
-            for a, v in list(issue):
-                click.echo("{}: {}".format(a, v))
-
     return issues
 
 
