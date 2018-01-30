@@ -263,6 +263,10 @@ def _save_assignee(assignee_id, referenced_users_ids, groups,
                    dynamic_mappings_defined, dynamic_groups_mappings):
     """
     Save issue assignee in the export dictionary.
+    By default the assignee is a user, but if the
+    "Allow issue assignment to groups" setting is
+    enabled in Redmine the assignee may also be a
+    group.
 
     :param assignee_id: ID of the issue assignee.
                         The ID may belong either to a user or a group.
