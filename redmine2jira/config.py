@@ -41,7 +41,7 @@ from __future__ import absolute_import
 CHECK_ISSUE_ID_FILTER_AVAILABILITY = True
 ISSUE_ID_FILTER_AVAILABLE = True
 
-# Custom Redmine to Jira users mappings used during issue export.
+# Custom Redmine to Jira user mappings used during issue export.
 # The mapping is defined via usernames (login names). When no
 # mapping is defined for a referenced Redmine user, by default
 # the tool will map the Redmine username to the Jira one as it is.
@@ -57,7 +57,7 @@ CUSTOM_USERS_MAPPINGS = {
     #    ...
 }
 
-# Custom Redmine groups to Jira users mappings used during issue export.
+# Custom Redmine group to Jira user mappings used during issue export.
 # The only relations between issues and groups is via the "Assignee"
 # field, and only if issue assignment to groups is explicitly allowed
 # in the Redmine instance settings.
@@ -83,7 +83,7 @@ CUSTOM_GROUPS_MAPPINGS = {
     #    ...
 }
 
-# Custom Redmine to Jira projects mappings used during issue export.
+# Custom Redmine to Jira project mappings used during issue export.
 # The mapping is defined between Redmine project identifiers and
 # Jira project keys. When no mapping is defined for a referenced project
 # the tool will prompt the user to input a Jira project key.
