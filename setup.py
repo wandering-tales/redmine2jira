@@ -14,6 +14,7 @@ with open('HISTORY.rst') as history_file:
 requirements = [
     'Click>=6.0',
     'click-default-group>=1.2',
+    'inflection>=0.3',
     'python-redmine>=2.0,<2.1',
     'six>=1.11',
     'tabulate>=0.8',

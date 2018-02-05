@@ -11,6 +11,7 @@ from operator import and_, itemgetter
 import click
 
 from click_default_group import DefaultGroup
+from inflection import humanize, underscore
 from redminelib import Redmine
 from redminelib.resultsets import ResourceSet
 from six import text_type
@@ -19,6 +20,37 @@ from tabulate import tabulate
 
 from redmine2jira import config
 
+
+# Redmine and Jira resource type field mappings
+#
+# NOTE: A Redmine resource type may corresponds
+#       to one or more Jira resource types.
+RESOURCE_TYPE_FIELD_MAPPINGS = {
+    'user': {
+        'user': ('login', 'username')
+    },
+    'group': {
+        'user': ('name', 'username'),
+        'user1': ('name', 'username'),
+        'user2': ('name', 'username')
+    },
+    'project': {
+        'project': ('identifier', 'key')
+    },
+    'tracker': {
+        'issue_type': ('name', 'name')
+    },
+    'issue_status': {
+        'issue_status': ('name', 'name')
+    },
+    'issue_priority': {
+        'issue_priority': ('name', 'name')
+    },
+    'issue_category': {
+        'component': ('name', 'name'),
+        'label': ('name', 'name')
+    }
+}
 
 MISSING_RESOURCE_MAPPINGS_MESSAGE = "Resource value mappings definition"
 MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX = " -> "
@@ -176,28 +208,27 @@ def _export_issues(issues, groups, projects):
          if cf.customized_type == 'issue' and cf.field_format == 'user'}
 
     referenced_users_ids = set()
-    dynamic_projects_mappings = dict()
-    dynamic_groups_mappings = dict()
+    resource_value_mappings = dict()
 
     for issue in issues:
         # The issue project must be saved before everything else.
         # That's because all the issues entities must be children of a project
         # entity in the export dictionary.
-        _save_project(issue.project.id, projects,
-                      bool(dynamic_projects_mappings or
-                           dynamic_groups_mappings),
-                      dynamic_projects_mappings)
+        _save_project(projects[issue.project.id], resource_value_mappings)
 
         # Save required standard fields
         _save_author(issue.author.id, referenced_users_ids)
 
         # Save optional standard fields
         if hasattr(issue, 'assigned_to'):
-            _save_assignee(issue.assigned_to.id, groups,
-                           bool(dynamic_projects_mappings or
-                                dynamic_groups_mappings),
-                           dynamic_groups_mappings,
-                           referenced_users_ids)
+            # If the issue assignee is a Redmine group...
+            if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and \
+               issue.assigned_to.id in groups:
+                assignee = groups[issue.assigned_to.id]
+            else:
+                referenced_users_ids.add(issue.assigned_to.id)
+
+            _save_assignee(assignee, resource_value_mappings)
 
         # Save custom fields
         if hasattr(issue, 'custom_fields'):
@@ -214,38 +245,22 @@ def _export_issues(issues, groups, projects):
     return referenced_users_ids
 
 
-def _save_project(project_id, projects,
-                  dynamic_mappings_defined,
-                  dynamic_projects_mappings):
+def _save_project(project, resource_value_mappings):
     """
     Save issue project in the export dictionary.
 
-    :param project_id: ID of the issue project
-    :param projects: All Redmine projects
-    :param dynamic_mappings_defined: Flag indicating that at least one missing
-                                     resource mapping has been dynamically
-                                     defined at runtime by the final user
-    :param dynamic_projects_mappings: Dictionary of the dynamic project
-                                      mappings defined so far by the final
-                                      user
+    :param project: Issue project
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
     """
-    project_identifier = projects[project_id].identifier
+    project_value_mapping = \
+        _get_resource_value_mapping(project, resource_value_mappings)
 
-    if project_identifier not in config.CUSTOM_REDMINE_PROJECT_JIRA_PROJECT_MAPPINGS and \
-       project_identifier not in dynamic_projects_mappings:
-        if not dynamic_mappings_defined:
-            click.echo(MISSING_RESOURCE_MAPPINGS_MESSAGE)
+    # TODO Set value in the export dictionary
+    click.echo(project_value_mapping)
 
-        project_jira_key = click.prompt(
-            "[Redmine project identifier{}Jira project key] {}"
-            .format(MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX,
-                    project_identifier),
-            prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
 
-        dynamic_projects_mappings[project_identifier] = project_jira_key
-
-        # TODO Set value in the final JSON
-        click.echo(project_jira_key)
 
 
 def _save_author(author_id, referenced_users_ids):
@@ -259,9 +274,7 @@ def _save_author(author_id, referenced_users_ids):
     referenced_users_ids.add(author_id)
 
 
-def _save_assignee(assignee_id, groups,
-                   dynamic_mappings_defined, dynamic_groups_mappings,
-                   referenced_users_ids):
+def _save_assignee(assignee, resource_value_mappings):
     """
     Save issue assignee in the export dictionary.
     By default the assignee is a user, but if the
@@ -269,40 +282,14 @@ def _save_assignee(assignee_id, groups,
     enabled in Redmine the assignee may also be a
     group.
 
-    :param assignee_id: ID of the issue assignee, which may refer either
-                        to a user or a group
-    :param groups: All Redmine groups
-    :param dynamic_mappings_defined: Flag indicating that at least one missing
-                                     resource mapping has been dynamically
-                                     defined at runtime by the final user
-    :param dynamic_groups_mappings: Dictionary of the dynamic groups mappings
-                                    defined so far by the final user
-    :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set
+    :param assignee: Issue assignee, which may refer
+                     either to a user or a group
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
     """
-    # If the issue assignee is a Redmine group...
-    if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and \
-       assignee_id in groups:
-        group_name = groups[assignee_id].name
-
-        # if the group has not explicitly mapped to a Jira user,
-        # either statically or dynamically...
-        if group_name not in config.CUSTOM_REDMINE_GROUP_JIRA_USER_MAPPINGS and \
-           group_name not in dynamic_groups_mappings:
-            if not dynamic_mappings_defined:
-                click.echo(MISSING_RESOURCE_MAPPINGS_MESSAGE)
-
-            assignee_jira_username = click.prompt(
-                "[Redmine group name{}Jira username] {}"
-                .format(MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX, group_name),
-                prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
-
-            dynamic_groups_mappings[group_name] = assignee_jira_username
-
-            # TODO Set value in the export dictionary
-            click.echo(assignee_jira_username)
-    else:
-        referenced_users_ids.add(assignee_id)
+    assignee_value_mapping = \
+        _get_resource_value_mapping(assignee, resource_value_mappings)
 
 
 def _save_custom_fields(custom_fields, users_related_issue_custom_field_ids,
@@ -370,6 +357,153 @@ def _save_time_entries(time_entries, referenced_users_ids):
     """
     for time_entry in time_entries:
         referenced_users_ids.add(time_entry.user.id)
+
+
+def _get_resource_value_mapping(resource, resource_value_mappings,
+                                resource_type=None, project_id=None):
+    """
+    :param resource: Resource instance
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    :param project_id: ID of the project the resource value is bound to,
+                       if any.
+    :return: The Jira value for the resource
+    """
+    # Guess Redmine resource type by class name
+    # unless explicitly specified
+    redmine_resource_type = resource_type
+
+    if not redmine_resource_type:
+        redmine_resource_type = underscore(resource.__class__.__name__)
+
+    redmine_resource_value = None
+    jira_resource_type = None
+    jira_resource_value = None
+    field_mapping = None
+
+    # Get all Jira resource types mapped by the the Redmine one.
+    # Even though a Redmine resource type can be mapped
+    # to more than one Jira resource type, user-defined
+    # Redmine values have one-to-one mappings with Jira
+    # ones: if a mapping exists the Jira resource type
+    # is automatically guessed.
+    current_resource_type_field_mappings = \
+        RESOURCE_TYPE_FIELD_MAPPINGS[redmine_resource_type]
+
+    # Search for a statically user-defined value mapping
+    for jira_resource_type, field_mapping in \
+            current_resource_type_field_mappings.items():
+        # Dynamically compose resource type mapping setting name
+        custom_mapping_setting_name = \
+            'CUSTOM_REDMINE_{}_JIRA_{}_MAPPINGS'.format(
+                redmine_resource_type.upper(),
+                jira_resource_type.upper())
+
+        # Get the Redmine resource value
+        redmine_resource_value = getattr(resource, field_mapping[0])
+
+        # Try to get the Jira resource value from mappings
+        # statically defined in configuration settings
+        static_resource_value_mappings = \
+            getattr(config, custom_mapping_setting_name)
+
+        if project_id is not None:
+            static_resource_value_mappings = \
+                static_resource_value_mappings.get(project_id, {})
+
+        jira_resource_value = \
+            static_resource_value_mappings.get(redmine_resource_value, None)
+
+        if jira_resource_value is not None:
+            # A Jira resource value mapping has been found. Exit!
+            break
+
+    if jira_resource_value is None:
+        # Search for a dynamically user-defined value mapping
+        for jira_resource_type, field_mapping \
+                in current_resource_type_field_mappings.items():
+            # Get the Redmine resource value
+            redmine_resource_value = getattr(resource, field_mapping[0])
+
+            # Try to get the Jira resource value from mappings
+            # dynamically defined at runtime
+            dynamic_resource_value_mapping = resource_value_mappings \
+                .get(redmine_resource_type, {})\
+                .get(jira_resource_type, {})
+
+            if project_id is not None:
+                dynamic_resource_value_mapping = \
+                    dynamic_resource_value_mapping.get(project_id, {})
+
+            jira_resource_value = dynamic_resource_value_mapping \
+                .get(redmine_resource_value, None)
+
+            if jira_resource_value is not None:
+                # A Jira resource value mapping has been found. Exit!
+                break
+
+    if jira_resource_value is None:
+        # No value mapping found!
+
+        # If there not exist dynamically user-defined value mappings...
+        if not any(True for jrt in resource_value_mappings.values()
+                   for _ in jrt):
+            click.echo()
+            click.echo("-" * len(MISSING_RESOURCE_MAPPINGS_MESSAGE))
+            click.echo(MISSING_RESOURCE_MAPPINGS_MESSAGE)
+            click.echo("-" * len(MISSING_RESOURCE_MAPPINGS_MESSAGE))
+
+        # If the Redmine resource type can be mapped
+        # to more than one Jira resource types...
+        if len(current_resource_type_field_mappings.keys()) > 1:
+            # ...prompt user to choose one
+            click.echo(
+                "Missing value mapping for Redmine {} '{}'."
+                .format(humanize(redmine_resource_type).lower(),
+                        redmine_resource_value))
+            click.echo("A Redmine '{}' can be mapped with one of the "
+                       "following Jira resource types:"
+                       .format(humanize(redmine_resource_type)))
+            click.echo()
+
+            static_jira_resource_type_choices = \
+                {i + 1: jrt
+                 for i, jrt in enumerate(current_resource_type_field_mappings)}
+
+            for k, v in static_jira_resource_type_choices.items():
+                click.echo("{:d}) {}".format(k, humanize(v)))
+
+            click.echo()
+
+            choice = click.prompt(
+                "Choose a target Jira resource type",
+                prompt_suffix=": ",
+                type=click.IntRange(1, len(static_jira_resource_type_choices)))
+
+            jira_resource_type = static_jira_resource_type_choices[choice]
+
+        click.echo()
+
+        jira_resource_value = click.prompt(
+            "[Redmine {} {}{}Jira {} {}] {}"
+            .format(humanize(redmine_resource_type),
+                    field_mapping[0],
+                    MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX,
+                    humanize(jira_resource_type),
+                    field_mapping[1],
+                    redmine_resource_value),
+            prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
+
+        # Setting dictionary key aliases
+        rrt = redmine_resource_type
+        jrt = jira_resource_type
+        rrv = redmine_resource_value
+
+        resource_value_mappings.setdefault(rrt, {}) \
+                               .setdefault(jrt, {})[rrv] = jira_resource_value
+
+    return jira_resource_value
 
 
 def _list_unmapped_referenced_users(users, referenced_users_ids):
