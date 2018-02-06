@@ -738,9 +738,9 @@ def _get_resource_value_mapping(resource, resource_value_mappings,
 def _list_unmapped_referenced_users(users, referenced_users_ids):
     """
     Print in a table fashion all the users not explicitly mapped to specific
-    Jira users, via the CUSTOM_USERS_MAPPINGS setting. The purpose is to warn
-    the final user to create them in the target Jira instance before importing
-    the issues.
+    Jira users, via the CUSTOM_REDMINE_USER_JIRA_USER_MAPPINGS setting.
+    The purpose is to warn the final user to create them in the target Jira
+    instance before importing the issues.
 
     :param users: All Redmine users
     :param referenced_users_ids: ID's of Redmine users referenced
@@ -768,7 +768,7 @@ def _list_unmapped_referenced_users(users, referenced_users_ids):
 
         click.echo()
         click.echo("No static mappings have been defined for them via the "
-                   "CUSTOM_USERS_MAPPINGS setting.")
+                   "CUSTOM_REDMINE_USER_JIRA_USER_MAPPINGS setting.")
         click.echo("Ensure the above users already exist in your "
                    "Jira instance before starting the import.")
 
