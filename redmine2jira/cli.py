@@ -274,6 +274,9 @@ def _save_author(author, referenced_users_ids):
     """
     referenced_users_ids.add(author.id)
 
+    # TODO Set value in the export dictionary
+    click.echo(author)
+
 
 def _save_assignee(assignee, resource_value_mappings):
     """
@@ -291,6 +294,9 @@ def _save_assignee(assignee, resource_value_mappings):
     """
     assignee_value_mapping = \
         _get_resource_value_mapping(assignee, resource_value_mappings)
+
+    # TODO Set value in the export dictionary
+    click.echo(assignee_value_mapping)
 
 
 def _save_custom_fields(custom_fields, users_related_issue_custom_field_ids,
@@ -311,6 +317,9 @@ def _save_custom_fields(custom_fields, users_related_issue_custom_field_ids,
             if getattr(custom_field, 'multiple', False) \
             else {custom_field.value}
 
+        # TODO Set value in the export dictionary
+        click.echo(custom_field)
+
 
 def _save_watchers(watchers, referenced_users_ids):
     """
@@ -322,6 +331,9 @@ def _save_watchers(watchers, referenced_users_ids):
     """
     for watcher in watchers:
         referenced_users_ids.add(watcher.id)
+
+        # TODO Set value in the export dictionary
+        click.echo(watcher)
 
 
 def _save_attachments(attachments, referenced_users_ids):
@@ -335,6 +347,9 @@ def _save_attachments(attachments, referenced_users_ids):
     for attachment in attachments:
         referenced_users_ids.add(attachment.author.id)
 
+        # TODO Set value in the export dictionary
+        click.echo(attachment)
+
 
 def _save_journals(journals, referenced_users_ids):
     """
@@ -347,6 +362,9 @@ def _save_journals(journals, referenced_users_ids):
     for journal in journals:
         referenced_users_ids.add(journal.user.id)
 
+        # TODO Set value in the export dictionary
+        click.echo(journal)
+
 
 def _save_time_entries(time_entries, referenced_users_ids):
     """
@@ -358,6 +376,9 @@ def _save_time_entries(time_entries, referenced_users_ids):
     """
     for time_entry in time_entries:
         referenced_users_ids.add(time_entry.user.id)
+
+        # TODO Set value in the export dictionary
+        click.echo(time_entry)
 
 
 def _get_resource_value_mapping(resource, resource_value_mappings,
