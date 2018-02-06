@@ -851,6 +851,15 @@ def list_issues_statuses():
     _list_resources(issue_statuses, sort_key='name')
 
 
+@list_resources.command('issue_priorities')
+def list_issues_priorities():
+    """List Redmine issue priorities."""
+
+    issue_priorities = redmine.enumeration.filter(resource='issue_priorities')
+
+    _list_resources(issue_priorities, sort_key='name')
+
+
 @list_resources.command('custom_fields')
 def list_custom_fields():
     """List Redmine custom fields."""
