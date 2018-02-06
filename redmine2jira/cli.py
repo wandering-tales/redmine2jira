@@ -218,7 +218,7 @@ def _export_issues(issues, users, groups, projects):
         _save_project(projects[issue.project.id], resource_value_mappings)
 
         # Save required standard fields
-        _save_author(issue.author.id, referenced_users_ids)
+        _save_author(issue.author, referenced_users_ids)
 
         # Save optional standard fields
         if hasattr(issue, 'assigned_to'):
@@ -264,17 +264,15 @@ def _save_project(project, resource_value_mappings):
     click.echo(project_value_mapping)
 
 
-
-
-def _save_author(author_id, referenced_users_ids):
+def _save_author(author, referenced_users_ids):
     """
     Save issue author in the export dictionary.
 
-    :param author_id: ID of the issue author
+    :param author: Issue author
     :param referenced_users_ids: Set of ID's of referenced users
                                  found so far in the issue resource set
     """
-    referenced_users_ids.add(author_id)
+    referenced_users_ids.add(author.id)
 
 
 def _save_assignee(assignee, resource_value_mappings):
