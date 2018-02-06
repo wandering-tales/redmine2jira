@@ -95,7 +95,7 @@ def export_issues(output, query_string):
 
     projects = {project.id: project for project in redmine.project.all()}
 
-    referenced_users_ids = _export_issues(issues, groups, projects)
+    referenced_users_ids = _export_issues(issues, users, groups, projects)
 
     click.echo("Issues exported in '{}'!".format(output.name))
 
@@ -168,7 +168,7 @@ def _get_all_issues():
     return redmine.issue.all()
 
 
-def _export_issues(issues, groups, projects):
+def _export_issues(issues, users, groups, projects):
     """
     Export issues and their relations to a JSON file which structure is
     compatible with the JIRA Importers plugin (JIM).
@@ -198,6 +198,7 @@ def _export_issues(issues, groups, projects):
     can only be found in the "assignee" field.
 
     :param issues: Issues to export
+    :param users: All Redmine users
     :param groups: All Redmine groups
     :param projects: All Redmine projects
     :return: ID's of users referenced in the issues being exported
@@ -226,6 +227,8 @@ def _export_issues(issues, groups, projects):
                issue.assigned_to.id in groups:
                 assignee = groups[issue.assigned_to.id]
             else:
+                assignee = users[issue.assigned_to.id]
+
                 referenced_users_ids.add(issue.assigned_to.id)
 
             _save_assignee(assignee, resource_value_mappings)
