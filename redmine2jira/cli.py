@@ -269,13 +269,14 @@ def _export_issues(issues, users, groups, projects, trackers,
             # If the issue assignee is a Redmine group...
             if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and \
                issue.assigned_to.id in groups:
-                assignee = groups[issue.assigned_to.id]
+                _save_assignee(groups[issue.assigned_to.id],
+                               resource_value_mappings,
+                               is_group=True)
             else:
-                assignee = users[issue.assigned_to.id]
+                _save_assignee(users[issue.assigned_to.id],
+                               resource_value_mappings)
 
                 referenced_users_ids.add(issue.assigned_to.id)
-
-            _save_assignee(assignee, resource_value_mappings)
 
         if hasattr(issue, 'category'):
             category = issue_categories[issue.project.id][issue.category.id]
@@ -434,7 +435,8 @@ def _save_description(description):
     click.echo("Description: {}".format(description))
 
 
-def _save_assignee(assignee, resource_value_mappings):
+def _save_assignee(assignee, resource_value_mappings,
+                   is_group=False):
     """
     Save issue assignee in the export dictionary.
     By default the assignee is a user, but if the
@@ -447,9 +449,17 @@ def _save_assignee(assignee, resource_value_mappings):
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
+    :param is_group: If `True`` the assignee is interpreted as a group
+                     rather than an user; ``False`` as an user
     """
-    assignee_value_mapping = \
-        _get_resource_value_mapping(assignee, resource_value_mappings)
+    # If the assignee is not a group, that means is a user...
+    if not is_group:
+        assignee_value_mapping = \
+            _get_resource_value_mapping(assignee, resource_value_mappings,
+                                        default_value_field='login')
+    else:
+        assignee_value_mapping = \
+            _get_resource_value_mapping(assignee, resource_value_mappings)
 
     # TODO Set value in the export dictionary
     click.echo("Assignee: {}".format(assignee_value_mapping))
@@ -570,7 +580,8 @@ def _save_time_entries(time_entries, referenced_users_ids):
 
 
 def _get_resource_value_mapping(resource, resource_value_mappings,
-                                resource_type=None, project_id=None):
+                                resource_type=None, project_id=None,
+                                default_value_field=None):
     """
     :param resource: Resource instance
     :param resource_value_mappings: Dictionary of the resource mappings
@@ -578,6 +589,11 @@ def _get_resource_value_mapping(resource, resource_value_mappings,
                                     by the final user
     :param project_id: ID of the project the resource value is bound to,
                        if any.
+    :param default_value_field: The name of the field of the resource where
+                                to get the value if no static resource
+                                value mapping is found. If defined, it
+                                basically turns off the dynamic resource value
+                                mapping feature.
     :return: The Jira value for the resource
     """
     # Guess Redmine resource type by class name
@@ -628,6 +644,9 @@ def _get_resource_value_mapping(resource, resource_value_mappings,
         if jira_resource_value is not None:
             # A Jira resource value mapping has been found. Exit!
             break
+
+    if jira_resource_value is None and default_value_field is not None:
+        return getattr(resource, default_value_field)
 
     if jira_resource_value is None:
         # Search for a dynamically user-defined value mapping
