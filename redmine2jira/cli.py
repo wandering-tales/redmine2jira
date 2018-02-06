@@ -298,6 +298,10 @@ def _export_issues(issues, users, groups, projects, trackers,
         _save_journals(issue.journals, referenced_users_ids)
         _save_time_entries(issue.time_entries, referenced_users_ids)
 
+        # TODO Save sub-tasks
+
+        # TODO Save relations
+
     return referenced_users_ids
 
 
