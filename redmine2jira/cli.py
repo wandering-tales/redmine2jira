@@ -261,7 +261,7 @@ def _save_project(project, resource_value_mappings):
         _get_resource_value_mapping(project, resource_value_mappings)
 
     # TODO Set value in the export dictionary
-    click.echo(project_value_mapping)
+    click.echo("Project: {}".format(project_value_mapping))
 
 
 def _save_author(author, referenced_users_ids):
@@ -275,7 +275,7 @@ def _save_author(author, referenced_users_ids):
     referenced_users_ids.add(author.id)
 
     # TODO Set value in the export dictionary
-    click.echo(author)
+    click.echo("Author: {}".format(author))
 
 
 def _save_assignee(assignee, resource_value_mappings):
@@ -296,7 +296,7 @@ def _save_assignee(assignee, resource_value_mappings):
         _get_resource_value_mapping(assignee, resource_value_mappings)
 
     # TODO Set value in the export dictionary
-    click.echo(assignee_value_mapping)
+    click.echo("Assignee: {}".format(assignee_value_mapping))
 
 
 def _save_custom_fields(custom_fields, users_related_issue_custom_field_ids,
@@ -318,7 +318,7 @@ def _save_custom_fields(custom_fields, users_related_issue_custom_field_ids,
             else {custom_field.value}
 
         # TODO Set value in the export dictionary
-        click.echo(custom_field)
+        click.echo("Custom field: {}".format(custom_field))
 
 
 def _save_watchers(watchers, referenced_users_ids):
@@ -333,7 +333,7 @@ def _save_watchers(watchers, referenced_users_ids):
         referenced_users_ids.add(watcher.id)
 
         # TODO Set value in the export dictionary
-        click.echo(watcher)
+        click.echo("Watcher: {}".format(watcher))
 
 
 def _save_attachments(attachments, referenced_users_ids):
@@ -348,7 +348,7 @@ def _save_attachments(attachments, referenced_users_ids):
         referenced_users_ids.add(attachment.author.id)
 
         # TODO Set value in the export dictionary
-        click.echo(attachment)
+        click.echo("Attachment: {}".format(attachment))
 
 
 def _save_journals(journals, referenced_users_ids):
@@ -363,7 +363,7 @@ def _save_journals(journals, referenced_users_ids):
         referenced_users_ids.add(journal.user.id)
 
         # TODO Set value in the export dictionary
-        click.echo(journal)
+        click.echo("Journal: {}".format(journal))
 
 
 def _save_time_entries(time_entries, referenced_users_ids):
@@ -378,7 +378,7 @@ def _save_time_entries(time_entries, referenced_users_ids):
         referenced_users_ids.add(time_entry.user.id)
 
         # TODO Set value in the export dictionary
-        click.echo(time_entry)
+        click.echo("Time entry: {}".format(time_entry))
 
 
 def _get_resource_value_mapping(resource, resource_value_mappings,
