@@ -83,7 +83,8 @@ def export_issues(output, query_string):
     click.echo("{:d} issue{} found!"
                .format(len(issues), "s" if len(issues) > 1 else ""))
 
-    # Get all Redmine users, groups, projects and store them by ID
+    # Get all Redmine users, groups, projects, trackers, issue statuses,
+    # issue priorities and store them by ID
 
     users = {user.id: user for user in chain(redmine.user.all(),
                                              redmine.user.filter(status=3))}
@@ -93,9 +94,29 @@ def export_issues(output, query_string):
     if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS:
         groups = {group.id: group for group in redmine.group.all()}
 
-    projects = {project.id: project for project in redmine.project.all()}
+    projects = {project.id: project
+                for project in redmine.project.all(include='issue_categories')}
+    trackers = {tracker.id: tracker for tracker in redmine.tracker.all()}
+    issue_statuses = {issue_status.id: issue_status
+                      for issue_status in redmine.issue_status.all()}
+    issue_priorities = {
+        issue_priority.id: issue_priority
+        for issue_priority in redmine.enumeration
+                                     .filter(resource='issue_priorities')}
 
-    referenced_users_ids = _export_issues(issues, users, groups, projects)
+    # Get all Redmine issue categories and store them by project ID
+    # and, for each project ID, by issue category ID
+    issue_categories = {
+        project.id: {
+            issue_category.id: issue_category
+            for issue_category in project.issue_categories
+        }
+        for project in projects.values()
+    }
+
+    referenced_users_ids = _export_issues(issues, users, groups,
+                                          projects, trackers, issue_statuses,
+                                          issue_priorities, issue_categories)
 
     click.echo("Issues exported in '{}'!".format(output.name))
 
@@ -168,7 +189,8 @@ def _get_all_issues():
     return redmine.issue.all()
 
 
-def _export_issues(issues, users, groups, projects):
+def _export_issues(issues, users, groups, projects, trackers,
+                   issue_statuses, issue_priorities, issue_categories):
     """
     Export issues and their relations to a JSON file which structure is
     compatible with the JIRA Importers plugin (JIM).
@@ -191,6 +213,10 @@ def _export_issues(issues, users, groups, projects):
     - Users
     - Groups
     - Projects
+    - Trackers
+    - Issue statuses
+    - Issue priorities
+    - Issue categories (on a per-project basis)
 
     Though users references can be found both in the issues properties (author,
     assignee, users related custom fields) and related child resources
@@ -201,6 +227,11 @@ def _export_issues(issues, users, groups, projects):
     :param users: All Redmine users
     :param groups: All Redmine groups
     :param projects: All Redmine projects
+    :param trackers: All Redmine trackers
+    :param issue_statuses: All Redmine issue statuses
+    :param issue_priorities: All Redmine issue priorities
+    :param issue_categories: All Redmine issue categories
+                             on a per-project basis
     :return: ID's of users referenced in the issues being exported
     """
     # Get users related issue custom field ID's
@@ -218,9 +249,22 @@ def _export_issues(issues, users, groups, projects):
         _save_project(projects[issue.project.id], resource_value_mappings)
 
         # Save required standard fields
+        _save_id(issue.id)
+        _save_subject(issue.subject)
         _save_author(issue.author, referenced_users_ids)
+        _save_tracker(trackers[issue.tracker.id],
+                      resource_value_mappings)
+        _save_issue_status(issue_statuses[issue.status.id],
+                           resource_value_mappings)
+        _save_issue_priority(issue_priorities[issue.priority.id],
+                             resource_value_mappings)
+        _save_creation_date(issue.created_on)
+        _save_modification_date(issue.updated_on)
 
         # Save optional standard fields
+        if hasattr(issue, 'description'):
+            _save_description(issue.description)
+
         if hasattr(issue, 'assigned_to'):
             # If the issue assignee is a Redmine group...
             if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and \
@@ -232,6 +276,15 @@ def _export_issues(issues, users, groups, projects):
                 referenced_users_ids.add(issue.assigned_to.id)
 
             _save_assignee(assignee, resource_value_mappings)
+
+        if hasattr(issue, 'category'):
+            category = issue_categories[issue.project.id][issue.category.id]
+
+            _save_issue_category(category, issue.project.id,
+                                 resource_value_mappings)
+
+        if hasattr(issue, 'estimated_hours'):
+            _save_estimated_hours(issue.estimated_hours)
 
         # Save custom fields
         if hasattr(issue, 'custom_fields'):
@@ -264,6 +317,26 @@ def _save_project(project, resource_value_mappings):
     click.echo("Project: {}".format(project_value_mapping))
 
 
+def _save_id(issue_id):
+    """
+    Save issue ID in the export dictionary as "external ID".
+
+    :param issue_id: Issue ID
+    """
+    # TODO Set value in the export dictionary
+    click.echo("ID: {}".format(issue_id))
+
+
+def _save_subject(subject):
+    """
+    Save issue subject in the export dictionary.
+
+    :param subject: Issue subject
+    """
+    # TODO Set value in the export dictionary
+    click.echo("Subject: {}".format(subject))
+
+
 def _save_author(author, referenced_users_ids):
     """
     Save issue author in the export dictionary.
@@ -276,6 +349,85 @@ def _save_author(author, referenced_users_ids):
 
     # TODO Set value in the export dictionary
     click.echo("Author: {}".format(author))
+
+
+def _save_tracker(tracker, resource_value_mappings):
+    """
+    Save issue tracker in the export dictionary.
+
+    :param tracker: Issue tracker
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    """
+    tracker_value_mapping = \
+        _get_resource_value_mapping(tracker, resource_value_mappings)
+
+    # TODO Set value in the export dictionary
+    click.echo("Tracker: {}".format(tracker_value_mapping))
+
+
+def _save_issue_status(issue_status, resource_value_mappings):
+    """
+    Save issue status in the export dictionary.
+
+    :param issue_status: Issue status
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    """
+    issue_status_value_mapping = \
+        _get_resource_value_mapping(issue_status, resource_value_mappings)
+
+    # TODO Set value in the export dictionary
+    click.echo("Issue status: {}".format(issue_status_value_mapping))
+
+
+def _save_issue_priority(issue_priority, resource_value_mappings):
+    """
+    Save issue priority in the export dictionary.
+
+    :param issue_priority: Issue priority
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    """
+    issue_priority_value_mapping = \
+        _get_resource_value_mapping(issue_priority, resource_value_mappings,
+                                    resource_type="issue_priority")
+
+    # TODO Set value in the export dictionary
+    click.echo("Issue priority: {}".format(issue_priority_value_mapping))
+
+
+def _save_creation_date(creation_date):
+    """
+    Save issue creation date in the export dictionary.
+
+    :param creation_date: Issue creation date
+    """
+    # TODO Set value in the export dictionary
+    click.echo("Created on: {:%Y-%m-%d}".format(creation_date))
+
+
+def _save_modification_date(modification_date):
+    """
+    Save issue modification date in the export dictionary.
+
+    :param modification_date: Issue modification date
+    """
+    # TODO Set value in the export dictionary
+    click.echo("Updated on: {:%Y-%m-%d}".format(modification_date))
+
+
+def _save_description(description):
+    """
+    Save issue description in the export dictionary.
+
+    :param description: Issue description
+    """
+    # TODO Set value in the export dictionary
+    click.echo("Description: {}".format(description))
 
 
 def _save_assignee(assignee, resource_value_mappings):
@@ -297,6 +449,38 @@ def _save_assignee(assignee, resource_value_mappings):
 
     # TODO Set value in the export dictionary
     click.echo("Assignee: {}".format(assignee_value_mapping))
+
+
+def _save_issue_category(issue_category, project_id, resource_value_mappings):
+    """
+    Save issue category in the export dictionary.
+
+    :param issue_category: Issue category
+    :param project_id: ID of the project the issue belongs to
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    """
+    issue_category_value_mapping = \
+        _get_resource_value_mapping(issue_category, resource_value_mappings,
+                                    project_id=project_id)
+
+    # TODO Set value in the export dictionary
+    click.echo("Issue category: {}".format(issue_category_value_mapping))
+
+    # TODO Save additional label to recognize the specific import
+
+
+def _save_estimated_hours(estimated_hours):
+    """
+    Save issue estimated hours in the export dictionary.
+
+    :param estimated_hours: Issue estimated hours
+    """
+    # TODO Set value in the export dictionary
+    click.echo("Estimated hours: {}".format(estimated_hours))
+
+    # TODO Calculate and save total time spent
 
 
 def _save_custom_fields(custom_fields, users_related_issue_custom_field_ids,
