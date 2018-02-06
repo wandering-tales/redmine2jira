@@ -41,7 +41,7 @@ from __future__ import absolute_import
 CHECK_ISSUE_ID_FILTER_AVAILABILITY = True
 ISSUE_ID_FILTER_AVAILABLE = True
 
-# Custom Redmine to Jira users mappings used during issue export.
+# Custom Redmine to Jira user mappings used during issue export.
 # The mapping is defined via usernames (login names). When no
 # mapping is defined for a referenced Redmine user, by default
 # the tool will map the Redmine username to the Jira one as it is.
@@ -49,7 +49,7 @@ ISSUE_ID_FILTER_AVAILABLE = True
 # NOTE: The concept of "Jira user" is also extended to Jira Service Desk
 #       "portal only customers".
 #
-CUSTOM_USERS_MAPPINGS = {
+CUSTOM_REDMINE_USER_JIRA_USER_MAPPINGS = {
     #
     # Example:
     #
@@ -57,7 +57,7 @@ CUSTOM_USERS_MAPPINGS = {
     #    ...
 }
 
-# Custom Redmine groups to Jira users mappings used during issue export.
+# Custom Redmine group to Jira user mappings used during issue export.
 # The only relations between issues and groups is via the "Assignee"
 # field, and only if issue assignment to groups is explicitly allowed
 # in the Redmine instance settings.
@@ -75,7 +75,7 @@ CUSTOM_USERS_MAPPINGS = {
 # NOTE: The concept of "Jira user" is also extended to Jira Service Desk
 #       "portal only customers".
 #
-CUSTOM_GROUPS_MAPPINGS = {
+CUSTOM_REDMINE_GROUP_JIRA_USER_MAPPINGS = {
     #
     # Example:
     #
@@ -83,16 +83,98 @@ CUSTOM_GROUPS_MAPPINGS = {
     #    ...
 }
 
-# Custom Redmine to Jira projects mappings used during issue export.
+# Custom Redmine to Jira project mappings used during issue export.
 # The mapping is defined between Redmine project identifiers and
 # Jira project keys. When no mapping is defined for a referenced project
 # the tool will prompt the user to input a Jira project key.
 #
-CUSTOM_PROJECTS_MAPPINGS = {
+CUSTOM_REDMINE_PROJECT_JIRA_PROJECT_MAPPINGS = {
     #
     # Example:
     #
     #    'my-cool-project': 'MCP',
+    #    ...
+}
+
+
+# Custom Redmine tracker to Jira issue type mappings used during issue export.
+# The mapping is defined between Redmine tracker and Jira issue type names,
+# case sensitive. When no mapping is defined for a referenced tracker
+# the tool will prompt the user to input a Jira issue type name.
+#
+CUSTOM_REDMINE_TRACKER_JIRA_ISSUE_TYPE_MAPPINGS = {
+    #
+    # Example:
+    #
+    #    'Defect': 'Bug',
+    #    ...
+}
+
+# Custom Redmine to Jira issue status mappings used during issue export.
+# The mapping is defined between Redmine and Jira issue status names,
+# case sensitive. When no mapping is defined for a referenced issue status
+# the tool will prompt the user to input a Jira issue status name.
+#
+CUSTOM_REDMINE_ISSUE_STATUS_JIRA_ISSUE_STATUS_MAPPINGS = {
+    #
+    # Example:
+    #
+    #    'Open': 'To Do',
+    #    ...
+}
+
+# Custom Redmine to Jira issue priority mappings used during issue export.
+# The mapping is defined between Redmine and Jira issue priority names,
+# case sensitive. When no mapping is defined for a referenced issue priority
+# the tool will prompt the user to input a Jira issue priority name.
+#
+CUSTOM_REDMINE_ISSUE_PRIORITY_JIRA_ISSUE_PRIORITY_MAPPINGS = {
+    #
+    # Example:
+    #
+    #    'High': 'Highest',
+    #    ...
+}
+
+# Custom Redmine issue category to Jira component mappings
+# used during issue export.
+# The mapping is defined between Redmine issue category names
+# and Jira component names, case sensitive, on a per-project basis.
+# Basically this is a dictionary of projects, using project identifiers
+# as keys, and the mappings are nested dictionaries with respect to the
+# related project.
+# When no mapping is defined for a referenced issue category
+# the tool will prompt the user to input a Jira component name.
+#
+CUSTOM_REDMINE_ISSUE_CATEGORY_JIRA_COMPONENT_MAPPINGS = {
+    #
+    # Example:
+    #
+    #    'my-cool-project': {
+    #        'Backend': 'Backend',
+    #        ...
+    #    }
+    #    ...
+}
+
+# Custom Redmine issue category to Jira label mappings
+# used during issue export.
+# The mapping is defined between Redmine issue category names
+# and Jira labels, case sensitive, on a per-project basis.
+# Basically this is a dictionary of projects, using project identifiers
+# as keys, and the mappings are nested dictionaries with respect to the
+# related project.
+# When no mapping is defined for a referenced issue category
+# the tool will prompt the user to input a Jira label.
+#
+CUSTOM_REDMINE_ISSUE_CATEGORY_JIRA_LABEL_MAPPINGS = {
+    #
+    # Example:
+    #
+    #    'my-cool-project': {
+    #        'My Functional Module': 'My Functional Module',
+    #        ...
+    #    }
     #    ...
 }
 

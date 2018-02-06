@@ -11,6 +11,7 @@ from operator import and_, itemgetter
 import click
 
 from click_default_group import DefaultGroup
+from inflection import humanize, underscore
 from redminelib import Redmine
 from redminelib.resultsets import ResourceSet
 from six import text_type
@@ -20,7 +21,38 @@ from tabulate import tabulate
 from redmine2jira import config
 
 
-MISSING_RESOURCE_MAPPINGS_MESSAGE = "Please define missing resource mappings:"
+# Redmine and Jira resource type field mappings
+#
+# NOTE: A Redmine resource type may corresponds
+#       to one or more Jira resource types.
+RESOURCE_TYPE_FIELD_MAPPINGS = {
+    'user': {
+        'user': ('login', 'username')
+    },
+    'group': {
+        'user': ('name', 'username'),
+        'user1': ('name', 'username'),
+        'user2': ('name', 'username')
+    },
+    'project': {
+        'project': ('identifier', 'key')
+    },
+    'tracker': {
+        'issue_type': ('name', 'name')
+    },
+    'issue_status': {
+        'issue_status': ('name', 'name')
+    },
+    'issue_priority': {
+        'issue_priority': ('name', 'name')
+    },
+    'issue_category': {
+        'component': ('name', 'name'),
+        'label': ('name', 'name')
+    }
+}
+
+MISSING_RESOURCE_MAPPINGS_MESSAGE = "Resource value mappings definition"
 MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX = " -> "
 
 
@@ -51,20 +83,40 @@ def export_issues(output, query_string):
     click.echo("{:d} issue{} found!"
                .format(len(issues), "s" if len(issues) > 1 else ""))
 
-    # Get all Redmine users and store them by ID
+    # Get all Redmine users, groups, projects, trackers, issue statuses,
+    # issue priorities and store them by ID
+
     users = {user.id: user for user in chain(redmine.user.all(),
                                              redmine.user.filter(status=3))}
 
     groups = None
 
     if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS:
-        # Get all Redmine groups and store them by ID
         groups = {group.id: group for group in redmine.group.all()}
 
-    # Get all Redmine active projects and store them by ID
-    projects = {project.id: project for project in redmine.project.all()}
+    projects = {project.id: project
+                for project in redmine.project.all(include='issue_categories')}
+    trackers = {tracker.id: tracker for tracker in redmine.tracker.all()}
+    issue_statuses = {issue_status.id: issue_status
+                      for issue_status in redmine.issue_status.all()}
+    issue_priorities = {
+        issue_priority.id: issue_priority
+        for issue_priority in redmine.enumeration
+                                     .filter(resource='issue_priorities')}
 
-    referenced_users_ids = _export_issues(issues, groups, projects)
+    # Get all Redmine issue categories and store them by project ID
+    # and, for each project ID, by issue category ID
+    issue_categories = {
+        project.id: {
+            issue_category.id: issue_category
+            for issue_category in project.issue_categories
+        }
+        for project in projects.values()
+    }
+
+    referenced_users_ids = _export_issues(issues, users, groups,
+                                          projects, trackers, issue_statuses,
+                                          issue_priorities, issue_categories)
 
     click.echo("Issues exported in '{}'!".format(output.name))
 
@@ -125,12 +177,6 @@ def _get_issues_by_filter(query_string):
                 issues = [issue for issue in issues
                           if issue.id in issues_ids_filter]
 
-    # FIXME: Debug
-    if len(issues) == 1:
-        for issue in issues:
-            for a, v in list(issue):
-                click.echo("{}: {}".format(a, v))
-
     return issues
 
 
@@ -143,7 +189,8 @@ def _get_all_issues():
     return redmine.issue.all()
 
 
-def _export_issues(issues, groups, projects):
+def _export_issues(issues, users, groups, projects, trackers,
+                   issue_statuses, issue_priorities, issue_categories):
     """
     Export issues and their relations to a JSON file which structure is
     compatible with the JIRA Importers plugin (JIM).
@@ -161,22 +208,30 @@ def _export_issues(issues, groups, projects):
     interactively specify one, dynamically extending the initial static
     dictionary.
 
-    The resource types that needs a mappings are the following:
+    The resource types that support custom mappings are the following:
 
     - Users
     - Groups
     - Projects
+    - Trackers
+    - Issue statuses
+    - Issue priorities
+    - Issue categories (on a per-project basis)
 
     Though users references can be found both in the issues properties (author,
     assignee, users related custom fields) and related child resources
     (watchers, attachments, journal entries, time entries), groups references
     can only be found in the "assignee" field.
 
-    Each issue, instead, has always a reference to a single project.
-
     :param issues: Issues to export
+    :param users: All Redmine users
     :param groups: All Redmine groups
-    :param projects: All Redmine active projects
+    :param projects: All Redmine projects
+    :param trackers: All Redmine trackers
+    :param issue_statuses: All Redmine issue statuses
+    :param issue_priorities: All Redmine issue priorities
+    :param issue_categories: All Redmine issue categories
+                             on a per-project basis
     :return: ID's of users referenced in the issues being exported
     """
     # Get users related issue custom field ID's
@@ -185,122 +240,273 @@ def _export_issues(issues, groups, projects):
          if cf.customized_type == 'issue' and cf.field_format == 'user'}
 
     referenced_users_ids = set()
-    dynamic_projects_mappings = dict()
-    dynamic_groups_mappings = dict()
+    resource_value_mappings = dict()
 
     for issue in issues:
-        _save_project(issue.project.id, projects,
-                      bool(dynamic_projects_mappings or
-                           dynamic_groups_mappings),
-                      dynamic_projects_mappings)
+        # The issue project must be saved before everything else.
+        # That's because all the issues entities must be children of a project
+        # entity in the export dictionary.
+        _save_project(projects[issue.project.id], resource_value_mappings)
 
-        _save_author(issue.author.id, referenced_users_ids)
+        # Save required standard fields
+        _save_id(issue.id)
+        _save_subject(issue.subject)
+        _save_author(issue.author, referenced_users_ids)
+        _save_tracker(trackers[issue.tracker.id],
+                      resource_value_mappings)
+        _save_issue_status(issue_statuses[issue.status.id],
+                           resource_value_mappings)
+        _save_issue_priority(issue_priorities[issue.priority.id],
+                             resource_value_mappings)
+        _save_creation_date(issue.created_on)
+        _save_modification_date(issue.updated_on)
 
-        # If the issue has an assignee...
+        # Save optional standard fields
+        if hasattr(issue, 'description'):
+            _save_description(issue.description)
+
         if hasattr(issue, 'assigned_to'):
-            _save_assignee(issue.assigned_to.id, referenced_users_ids, groups,
-                           bool(dynamic_projects_mappings or
-                                dynamic_groups_mappings),
-                           dynamic_groups_mappings)
+            # If the issue assignee is a Redmine group...
+            if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and \
+               issue.assigned_to.id in groups:
+                assignee = groups[issue.assigned_to.id]
+            else:
+                assignee = users[issue.assigned_to.id]
 
+                referenced_users_ids.add(issue.assigned_to.id)
+
+            _save_assignee(assignee, resource_value_mappings)
+
+        if hasattr(issue, 'category'):
+            category = issue_categories[issue.project.id][issue.category.id]
+
+            _save_issue_category(category, issue.project.id,
+                                 resource_value_mappings)
+
+        if hasattr(issue, 'estimated_hours'):
+            _save_estimated_hours(issue.estimated_hours)
+
+        # Save custom fields
+        if hasattr(issue, 'custom_fields'):
+            _save_custom_fields(issue.custom_fields,
+                                users_related_issue_custom_field_ids,
+                                referenced_users_ids)
+
+        # Save related resources
         _save_watchers(issue.watchers, referenced_users_ids)
         _save_attachments(issue.attachments, referenced_users_ids)
         _save_journals(issue.journals, referenced_users_ids)
         _save_time_entries(issue.time_entries, referenced_users_ids)
 
-        # If the issue has custom fields...
-        if hasattr(issue, 'custom_fields'):
-            _save_custom_fields(issue.custom_fields,
-                                referenced_users_ids,
-                                users_related_issue_custom_field_ids)
+        # TODO Save sub-tasks
+
+        # TODO Save relations
 
     return referenced_users_ids
 
 
-def _save_project(project_id, projects,
-                  dynamic_mappings_defined,
-                  dynamic_projects_mappings):
+def _save_project(project, resource_value_mappings):
     """
     Save issue project in the export dictionary.
 
-    :param project_id: ID of the issue project.
-    :param projects: All Redmine projects
-    :param dynamic_mappings_defined: Flag indicating that at least one missing
-                                     resource mapping has been dynamically
-                                     defined at runtime by the final user.
-    :param dynamic_projects_mappings: Dictionary of the dynamic project
-                                      mappings defined so far by the final
-                                      user.
+    :param project: Issue project
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
     """
-    project_identifier = projects[project_id].identifier
+    project_value_mapping = \
+        _get_resource_value_mapping(project, resource_value_mappings)
 
-    if project_identifier not in config.CUSTOM_PROJECTS_MAPPINGS and \
-       project_identifier not in dynamic_projects_mappings:
-        if not dynamic_mappings_defined:
-            click.echo(MISSING_RESOURCE_MAPPINGS_MESSAGE)
-
-        project_jira_key = click.prompt(
-            "[Redmine project identifier{}Jira project key] {}"
-            .format(MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX,
-                    project_identifier),
-            prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
-
-        dynamic_projects_mappings[project_identifier] = project_jira_key
-
-        # TODO Set value in the final JSON
-        click.echo(project_jira_key)
+    # TODO Set value in the export dictionary
+    click.echo("Project: {}".format(project_value_mapping))
 
 
-def _save_author(author_id, referenced_users_ids):
+def _save_id(issue_id):
+    """
+    Save issue ID in the export dictionary as "external ID".
+
+    :param issue_id: Issue ID
+    """
+    # TODO Set value in the export dictionary
+    click.echo("ID: {}".format(issue_id))
+
+
+def _save_subject(subject):
+    """
+    Save issue subject in the export dictionary.
+
+    :param subject: Issue subject
+    """
+    # TODO Set value in the export dictionary
+    click.echo("Subject: {}".format(subject))
+
+
+def _save_author(author, referenced_users_ids):
     """
     Save issue author in the export dictionary.
 
-    :param author_id: ID of the issue author
+    :param author: Issue author
     :param referenced_users_ids: Set of ID's of referenced users
                                  found so far in the issue resource set
     """
-    referenced_users_ids.add(author_id)
+    referenced_users_ids.add(author.id)
+
+    # TODO Set value in the export dictionary
+    click.echo("Author: {}".format(author))
 
 
-def _save_assignee(assignee_id, referenced_users_ids, groups,
-                   dynamic_mappings_defined, dynamic_groups_mappings):
+def _save_tracker(tracker, resource_value_mappings):
+    """
+    Save issue tracker in the export dictionary.
+
+    :param tracker: Issue tracker
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    """
+    tracker_value_mapping = \
+        _get_resource_value_mapping(tracker, resource_value_mappings)
+
+    # TODO Set value in the export dictionary
+    click.echo("Tracker: {}".format(tracker_value_mapping))
+
+
+def _save_issue_status(issue_status, resource_value_mappings):
+    """
+    Save issue status in the export dictionary.
+
+    :param issue_status: Issue status
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    """
+    issue_status_value_mapping = \
+        _get_resource_value_mapping(issue_status, resource_value_mappings)
+
+    # TODO Set value in the export dictionary
+    click.echo("Issue status: {}".format(issue_status_value_mapping))
+
+
+def _save_issue_priority(issue_priority, resource_value_mappings):
+    """
+    Save issue priority in the export dictionary.
+
+    :param issue_priority: Issue priority
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    """
+    issue_priority_value_mapping = \
+        _get_resource_value_mapping(issue_priority, resource_value_mappings,
+                                    resource_type="issue_priority")
+
+    # TODO Set value in the export dictionary
+    click.echo("Issue priority: {}".format(issue_priority_value_mapping))
+
+
+def _save_creation_date(creation_date):
+    """
+    Save issue creation date in the export dictionary.
+
+    :param creation_date: Issue creation date
+    """
+    # TODO Set value in the export dictionary
+    click.echo("Created on: {:%Y-%m-%d}".format(creation_date))
+
+
+def _save_modification_date(modification_date):
+    """
+    Save issue modification date in the export dictionary.
+
+    :param modification_date: Issue modification date
+    """
+    # TODO Set value in the export dictionary
+    click.echo("Updated on: {:%Y-%m-%d}".format(modification_date))
+
+
+def _save_description(description):
+    """
+    Save issue description in the export dictionary.
+
+    :param description: Issue description
+    """
+    # TODO Set value in the export dictionary
+    click.echo("Description: {}".format(description))
+
+
+def _save_assignee(assignee, resource_value_mappings):
     """
     Save issue assignee in the export dictionary.
+    By default the assignee is a user, but if the
+    "Allow issue assignment to groups" setting is
+    enabled in Redmine the assignee may also be a
+    group.
 
-    :param assignee_id: ID of the issue assignee.
-                        The ID may belong either to a user or a group.
-    :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set.
-    :param groups: All Redmine groups
-    :param dynamic_mappings_defined: Flag indicating that at least one missing
-                                     resource mapping has been dynamically
-                                     defined at runtime by the final user.
-    :param dynamic_groups_mappings: Dictionary of the dynamic groups mappings
-                                    defined so far by the final user.
+    :param assignee: Issue assignee, which may refer
+                     either to a user or a group
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
     """
-    # If the issue assignee is a Redmine group...
-    if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and \
-       assignee_id in groups:
-        group_name = groups[assignee_id].name
+    assignee_value_mapping = \
+        _get_resource_value_mapping(assignee, resource_value_mappings)
 
-        # if the group has not explicitly mapped to a Jira user,
-        # either statically or dynamically...
-        if group_name not in config.CUSTOM_GROUPS_MAPPINGS and \
-           group_name not in dynamic_groups_mappings:
-            if not dynamic_mappings_defined:
-                click.echo(MISSING_RESOURCE_MAPPINGS_MESSAGE)
+    # TODO Set value in the export dictionary
+    click.echo("Assignee: {}".format(assignee_value_mapping))
 
-            assignee_jira_username = click.prompt(
-                "[Redmine group name{}Jira username] {}"
-                .format(MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX, group_name),
-                prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
 
-            dynamic_groups_mappings[group_name] = assignee_jira_username
+def _save_issue_category(issue_category, project_id, resource_value_mappings):
+    """
+    Save issue category in the export dictionary.
 
-            # TODO Set value in the export dictionary
-            click.echo(assignee_jira_username)
-    else:
-        referenced_users_ids.add(assignee_id)
+    :param issue_category: Issue category
+    :param project_id: ID of the project the issue belongs to
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    """
+    issue_category_value_mapping = \
+        _get_resource_value_mapping(issue_category, resource_value_mappings,
+                                    project_id=project_id)
+
+    # TODO Set value in the export dictionary
+    click.echo("Issue category: {}".format(issue_category_value_mapping))
+
+    # TODO Save additional label to recognize the specific import
+
+
+def _save_estimated_hours(estimated_hours):
+    """
+    Save issue estimated hours in the export dictionary.
+
+    :param estimated_hours: Issue estimated hours
+    """
+    # TODO Set value in the export dictionary
+    click.echo("Estimated hours: {}".format(estimated_hours))
+
+    # TODO Calculate and save total time spent
+
+
+def _save_custom_fields(custom_fields, users_related_issue_custom_field_ids,
+                        referenced_users_ids):
+    """
+    Save issue custom fields to export dictionary.
+
+    :param custom_fields: Issue custom fields
+    :param users_related_issue_custom_field_ids: Set of ID's of all the users
+                                                 related issue custom fields
+    :param referenced_users_ids: Set of ID's of referenced users
+                                 found so far in the issue resource set
+    """
+    for custom_field in (cf for cf in custom_fields
+                         if cf.id in users_related_issue_custom_field_ids):
+        referenced_users_ids |= \
+            set(custom_field.value) \
+            if getattr(custom_field, 'multiple', False) \
+            else {custom_field.value}
+
+        # TODO Set value in the export dictionary
+        click.echo("Custom field: {}".format(custom_field))
 
 
 def _save_watchers(watchers, referenced_users_ids):
@@ -309,10 +515,13 @@ def _save_watchers(watchers, referenced_users_ids):
 
     :param watchers: Issue watchers
     :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set.
+                                 found so far in the issue resource set
     """
     for watcher in watchers:
         referenced_users_ids.add(watcher.id)
+
+        # TODO Set value in the export dictionary
+        click.echo("Watcher: {}".format(watcher))
 
 
 def _save_attachments(attachments, referenced_users_ids):
@@ -321,10 +530,13 @@ def _save_attachments(attachments, referenced_users_ids):
 
     :param attachments: Issue attachments
     :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set.
+                                 found so far in the issue resource set
     """
     for attachment in attachments:
         referenced_users_ids.add(attachment.author.id)
+
+        # TODO Set value in the export dictionary
+        click.echo("Attachment: {}".format(attachment))
 
 
 def _save_journals(journals, referenced_users_ids):
@@ -333,10 +545,13 @@ def _save_journals(journals, referenced_users_ids):
 
     :param journals: Issue journals
     :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set.
+                                 found so far in the issue resource set
     """
     for journal in journals:
         referenced_users_ids.add(journal.user.id)
+
+        # TODO Set value in the export dictionary
+        click.echo("Journal: {}".format(journal))
 
 
 def _save_time_entries(time_entries, referenced_users_ids):
@@ -345,29 +560,160 @@ def _save_time_entries(time_entries, referenced_users_ids):
 
     :param time_entries: Issue time entries
     :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set.
+                                 found so far in the issue resource set
     """
     for time_entry in time_entries:
         referenced_users_ids.add(time_entry.user.id)
 
+        # TODO Set value in the export dictionary
+        click.echo("Time entry: {}".format(time_entry))
 
-def _save_custom_fields(custom_fields, referenced_users_ids,
-                        users_related_issue_custom_field_ids):
-    """
-    Save issue custom fields to export dictionary.
 
-    :param custom_fields: Issue custom fields
-    :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set.
-    :param users_related_issue_custom_field_ids: Set of ID's of all the users
-                                                 related issue custom fields.
+def _get_resource_value_mapping(resource, resource_value_mappings,
+                                resource_type=None, project_id=None):
     """
-    for custom_field in (cf for cf in custom_fields
-                         if cf.id in users_related_issue_custom_field_ids):
-        referenced_users_ids |= \
-            set(custom_field.value) \
-            if getattr(custom_field, 'multiple', False) \
-            else {custom_field.value}
+    :param resource: Resource instance
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    :param project_id: ID of the project the resource value is bound to,
+                       if any.
+    :return: The Jira value for the resource
+    """
+    # Guess Redmine resource type by class name
+    # unless explicitly specified
+    redmine_resource_type = resource_type
+
+    if not redmine_resource_type:
+        redmine_resource_type = underscore(resource.__class__.__name__)
+
+    redmine_resource_value = None
+    jira_resource_type = None
+    jira_resource_value = None
+    field_mapping = None
+
+    # Get all Jira resource types mapped by the the Redmine one.
+    # Even though a Redmine resource type can be mapped
+    # to more than one Jira resource type, user-defined
+    # Redmine values have one-to-one mappings with Jira
+    # ones: if a mapping exists the Jira resource type
+    # is automatically guessed.
+    current_resource_type_field_mappings = \
+        RESOURCE_TYPE_FIELD_MAPPINGS[redmine_resource_type]
+
+    # Search for a statically user-defined value mapping
+    for jira_resource_type, field_mapping in \
+            current_resource_type_field_mappings.items():
+        # Dynamically compose resource type mapping setting name
+        custom_mapping_setting_name = \
+            'CUSTOM_REDMINE_{}_JIRA_{}_MAPPINGS'.format(
+                redmine_resource_type.upper(),
+                jira_resource_type.upper())
+
+        # Get the Redmine resource value
+        redmine_resource_value = getattr(resource, field_mapping[0])
+
+        # Try to get the Jira resource value from mappings
+        # statically defined in configuration settings
+        static_resource_value_mappings = \
+            getattr(config, custom_mapping_setting_name)
+
+        if project_id is not None:
+            static_resource_value_mappings = \
+                static_resource_value_mappings.get(project_id, {})
+
+        jira_resource_value = \
+            static_resource_value_mappings.get(redmine_resource_value, None)
+
+        if jira_resource_value is not None:
+            # A Jira resource value mapping has been found. Exit!
+            break
+
+    if jira_resource_value is None:
+        # Search for a dynamically user-defined value mapping
+        for jira_resource_type, field_mapping \
+                in current_resource_type_field_mappings.items():
+            # Get the Redmine resource value
+            redmine_resource_value = getattr(resource, field_mapping[0])
+
+            # Try to get the Jira resource value from mappings
+            # dynamically defined at runtime
+            dynamic_resource_value_mapping = resource_value_mappings \
+                .get(redmine_resource_type, {})\
+                .get(jira_resource_type, {})
+
+            if project_id is not None:
+                dynamic_resource_value_mapping = \
+                    dynamic_resource_value_mapping.get(project_id, {})
+
+            jira_resource_value = dynamic_resource_value_mapping \
+                .get(redmine_resource_value, None)
+
+            if jira_resource_value is not None:
+                # A Jira resource value mapping has been found. Exit!
+                break
+
+    if jira_resource_value is None:
+        # No value mapping found!
+
+        # If there not exist dynamically user-defined value mappings...
+        if not any(True for jrt in resource_value_mappings.values()
+                   for _ in jrt):
+            click.echo()
+            click.echo("-" * len(MISSING_RESOURCE_MAPPINGS_MESSAGE))
+            click.echo(MISSING_RESOURCE_MAPPINGS_MESSAGE)
+            click.echo("-" * len(MISSING_RESOURCE_MAPPINGS_MESSAGE))
+
+        # If the Redmine resource type can be mapped
+        # to more than one Jira resource types...
+        if len(current_resource_type_field_mappings.keys()) > 1:
+            # ...prompt user to choose one
+            click.echo(
+                "Missing value mapping for Redmine {} '{}'."
+                .format(humanize(redmine_resource_type).lower(),
+                        redmine_resource_value))
+            click.echo("A Redmine '{}' can be mapped with one of the "
+                       "following Jira resource types:"
+                       .format(humanize(redmine_resource_type)))
+            click.echo()
+
+            static_jira_resource_type_choices = \
+                {i + 1: jrt
+                 for i, jrt in enumerate(current_resource_type_field_mappings)}
+
+            for k, v in static_jira_resource_type_choices.items():
+                click.echo("{:d}) {}".format(k, humanize(v)))
+
+            click.echo()
+
+            choice = click.prompt(
+                "Choose a target Jira resource type",
+                prompt_suffix=": ",
+                type=click.IntRange(1, len(static_jira_resource_type_choices)))
+
+            jira_resource_type = static_jira_resource_type_choices[choice]
+
+        click.echo()
+
+        jira_resource_value = click.prompt(
+            "[Redmine {} {}{}Jira {} {}] {}"
+            .format(humanize(redmine_resource_type),
+                    field_mapping[0],
+                    MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX,
+                    humanize(jira_resource_type),
+                    field_mapping[1],
+                    redmine_resource_value),
+            prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
+
+        # Setting dictionary key aliases
+        rrt = redmine_resource_type
+        jrt = jira_resource_type
+        rrv = redmine_resource_value
+
+        resource_value_mappings.setdefault(rrt, {}) \
+                               .setdefault(jrt, {})[rrv] = jira_resource_value
+
+    return jira_resource_value
 
 
 def _list_unmapped_referenced_users(users, referenced_users_ids):
@@ -377,7 +723,7 @@ def _list_unmapped_referenced_users(users, referenced_users_ids):
     the final user to create them in the target Jira instance before importing
     the issues.
 
-    :param users: All Redmine users, including locked ones
+    :param users: All Redmine users
     :param referenced_users_ids: ID's of Redmine users referenced
                                  in issues being exported
     """
@@ -391,7 +737,7 @@ def _list_unmapped_referenced_users(users, referenced_users_ids):
     unmapped_referenced_users = \
         [v for k, v in users.items()
          if k in referenced_users_ids and
-            v.login not in config.CUSTOM_USERS_MAPPINGS]
+            v.login not in config.CUSTOM_REDMINE_USER_JIRA_USER_MAPPINGS]
 
     if unmapped_referenced_users:
         click.echo("Loading users referenced in the exported issues...")
@@ -399,9 +745,7 @@ def _list_unmapped_referenced_users(users, referenced_users_ids):
 
         _list_resources(unmapped_referenced_users,
                         sort_key='login',
-                        exclude_attrs=('id',
-                                       'created_on',
-                                       'last_login_on'))
+                        exclude_attrs=('id', 'created_on', 'last_login_on'))
 
         click.echo()
         click.echo("No static mappings have been defined for them via the "
@@ -509,6 +853,15 @@ def list_issues_statuses():
     issue_statuses = redmine.issue_status.all()
 
     _list_resources(issue_statuses, sort_key='name')
+
+
+@list_resources.command('issue_priorities')
+def list_issues_priorities():
+    """List Redmine issue priorities."""
+
+    issue_priorities = redmine.enumeration.filter(resource='issue_priorities')
+
+    _list_resources(issue_priorities, sort_key='name')
 
 
 @list_resources.command('custom_fields')
