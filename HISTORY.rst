@@ -2,6 +2,26 @@
 History
 =======
 
+0.5.0 (2018-02-06)
+------------------
+
+New features
+************
+* Added dynamic resource value mapping management at runtime
+* Added dynamic resource value mapping for assignee field when it refers to a standard user
+* Added command to list issue priorities
+
+Improvements
+************
+* Made Redmine and Jira respective resource types explicit in the names of settings related to resource value mappings
+* Slightly improved settings related comments
+* Added labels for values printed in console output
+* Improved code readability
+* Slightly improved docstrings
+* Updated ``sphinx`` to 1.6.7
+* Updated ``coverage`` to 4.5
+
+
 0.4.0 (2018-01-26)
 ------------------
 
