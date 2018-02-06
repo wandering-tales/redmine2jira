@@ -241,6 +241,7 @@ def _export_issues(issues, users, groups, projects, trackers,
         {cf.id for cf in redmine.custom_field.all()
          if cf.customized_type == 'issue' and cf.field_format == 'user'}
 
+    issues_export = dict()
     referenced_users_ids = set()
     resource_value_mappings = dict()
 
@@ -248,7 +249,8 @@ def _export_issues(issues, users, groups, projects, trackers,
         # The issue project must be saved before everything else.
         # That's because all the issues entities must be children of a project
         # entity in the export dictionary.
-        _save_project(projects[issue.project.id], resource_value_mappings)
+        project_export = _save_project(projects[issue.project.id],
+                                       resource_value_mappings, issues_export)
 
         # Save required standard fields
         _save_id(issue.id)
@@ -308,7 +310,7 @@ def _export_issues(issues, users, groups, projects, trackers,
     return referenced_users_ids
 
 
-def _save_project(project, resource_value_mappings):
+def _save_project(project, resource_value_mappings, issues_export):
     """
     Save issue project in the export dictionary.
 
@@ -316,12 +318,21 @@ def _save_project(project, resource_value_mappings):
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
+    :param issues_export: Issues export dictionary
     """
     project_type_mapping, project_value_mapping = \
         _get_resource_mapping(project, resource_value_mappings)
 
-    # TODO Set value in the export dictionary
-    click.echo("Project: {}".format(project_value_mapping))
+    projects = issues_export.setdefault('projects', [])
+
+    try:
+        project = next((project for project in projects
+                        if project['key'] == project_value_mapping))
+    except StopIteration:
+        project = {'key': project_value_mapping, 'issues': []}
+        projects.append(project)
+
+    return project
 
 
 def _save_id(issue_id):
