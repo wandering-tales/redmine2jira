@@ -72,6 +72,8 @@ def main():
 @click.option('--filter', 'query_string',
               help="Filter issues using URL query string syntax. "
                    "Please check documentation for additional details.")
+# TODO Add option to append an additional label to all exported issues
+# in order to easily recognize all the issues in the same import batch
 def export_issues(output, query_string):
     """Export Redmine issues."""
 
@@ -482,7 +484,6 @@ def _save_issue_category(issue_category, project_id, resource_value_mappings):
     # TODO Set value in the export dictionary
     click.echo("Issue category: {}".format(issue_category_value_mapping))
 
-    # TODO Save additional label to recognize the specific import
 
 
 def _save_estimated_hours(estimated_hours):
@@ -493,8 +494,6 @@ def _save_estimated_hours(estimated_hours):
     """
     # TODO Set value in the export dictionary
     click.echo("Estimated hours: {}".format(estimated_hours))
-
-    # TODO Calculate and save total time spent
 
 
 def _save_custom_fields(custom_fields, users_related_issue_custom_field_ids,
@@ -577,6 +576,10 @@ def _save_time_entries(time_entries, referenced_users_ids):
 
         # TODO Set value in the export dictionary
         click.echo("Time entry: {}".format(time_entry))
+
+        # TODO Add time spent to issue total time spent
+
+    # TODO Save issue total time spent
 
 
 def _get_resource_mapping(resource, resource_value_mappings,
