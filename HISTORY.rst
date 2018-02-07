@@ -2,6 +2,12 @@
 History
 =======
 
+0.6.1 (2018-02-07)
+------------------
+
+Fake release to fix a problem in PyPI upload.
+
+
 0.6.0 (2018-02-07)
 ------------------
 
