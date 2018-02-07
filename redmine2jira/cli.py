@@ -251,7 +251,7 @@ def _export_issues(issues, users, groups, projects, trackers,
         # Save required standard fields
         _save_id(issue.id)
         _save_subject(issue.subject)
-        _save_author(issue.author, referenced_users_ids)
+        _save_author(users[issue.author.id], referenced_users_ids)
         _save_tracker(trackers[issue.tracker.id],
                       resource_value_mappings)
         _save_issue_status(issue_statuses[issue.status.id],
