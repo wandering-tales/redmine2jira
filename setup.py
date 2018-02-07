@@ -15,9 +15,15 @@ requirements = [
     'Click>=6.0',
     'click-default-group>=1.2',
     'inflection>=0.3',
+    'isodate>=0.6',
+    'lxml>=4.1',
+    'markdown>=2.6',
+    'Pillow>=5.0',
     'python-redmine>=2.0,<2.1',
+    'regex>=2018.2',
     'six>=1.11',
     'tabulate>=0.8',
+    'textile>=3.0',
 ]
 
 setup_requirements = [
@@ -38,7 +44,7 @@ setup(
     author="Michele Cardone",
     author_email='michele.cardone82@gmail.com',
     url='https://github.com/wandering-tales/redmine2jira',
-    packages=find_packages(include=['redmine2jira']),
+    packages=find_packages(include=['redmine2jira.*']),
     entry_points={
         'console_scripts': [
             'redmine2jira=redmine2jira.cli:main'

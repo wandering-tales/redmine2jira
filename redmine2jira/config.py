@@ -191,6 +191,15 @@ REDMINE_USE_HTTPS = True
 REDMINE_HOST = 'redmine.example.com'
 REDMINE_API_KEY = '<put-administrator-user-redmine-api-key>'
 
+# Markup language used for text fields.
+#
+# Choose one among:
+# - none     (No formatting used)
+# - textile  (Textile markup language)
+# - markdown (Markdown markup language)
+#
+REDMINE_TEXT_FORMATTING = 'none'
+
 #
 # Issue tracking configuration
 #
