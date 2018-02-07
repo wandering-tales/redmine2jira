@@ -2,17 +2,51 @@
 History
 =======
 
+0.6.0 (2018-02-07)
+------------------
+
+New features
+************
+
+* Implemented issue project save method
+* Implemented issue standard fields save methods
+
+Improvements
+************
+
+* Renamed ``_get_resource_value_mapping`` method to ``_get_resource_mapping``.
+
+  The method now returns both mapped Jira type and value, rather than only value.
+
+  Updated method docstring accordingly.
+* Added Redmine general configuration section header
+
+Changes
+*******
+* Removed Python 3.3 compatibility
+* Updated encrypted PyPI password for Travis CI
+
+Fixes
+*****
+
+* Replaced references to old ``CUSTOM_USERS_MAPPINGS`` setting with new ``CUSTOM_REDMINE_USER_JIRA_USER_MAPPINGS``
+* Retrieved issue user resource instance from cached users list rather than from issue lazy loaded instance
+* Disabled dynamic value mapping feature for Redmine "User" resource type
+
+
 0.5.0 (2018-02-06)
 ------------------
 
 New features
 ************
+
 * Added dynamic resource value mapping management at runtime
 * Added dynamic resource value mapping for assignee field when it refers to a standard user
 * Added command to list issue priorities
 
 Improvements
 ************
+
 * Made Redmine and Jira respective resource types explicit in the names of settings related to resource value mappings
 * Slightly improved settings related comments
 * Added labels for values printed in console output
