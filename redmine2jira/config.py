@@ -183,6 +183,10 @@ CUSTOM_REDMINE_ISSUE_CATEGORY_JIRA_LABEL_MAPPINGS = {
 # Redmine #
 ###########
 
+#
+# General configuration
+#
+
 REDMINE_USE_HTTPS = True
 REDMINE_HOST = 'redmine.example.com'
 REDMINE_API_KEY = '<put-administrator-user-redmine-api-key>'
