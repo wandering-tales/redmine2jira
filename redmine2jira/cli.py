@@ -315,8 +315,8 @@ def _save_project(project, resource_value_mappings):
                                     dynamically defined at runtime
                                     by the final user
     """
-    project_value_mapping = \
-        _get_resource_value_mapping(project, resource_value_mappings)
+    project_type_mapping, project_value_mapping = \
+        _get_resource_mapping(project, resource_value_mappings)
 
     # TODO Set value in the export dictionary
     click.echo("Project: {}".format(project_value_mapping))
@@ -365,8 +365,8 @@ def _save_tracker(tracker, resource_value_mappings):
                                     dynamically defined at runtime
                                     by the final user
     """
-    tracker_value_mapping = \
-        _get_resource_value_mapping(tracker, resource_value_mappings)
+    tracker_type_mapping, tracker_value_mapping = \
+        _get_resource_mapping(tracker, resource_value_mappings)
 
     # TODO Set value in the export dictionary
     click.echo("Tracker: {}".format(tracker_value_mapping))
@@ -381,8 +381,8 @@ def _save_issue_status(issue_status, resource_value_mappings):
                                     dynamically defined at runtime
                                     by the final user
     """
-    issue_status_value_mapping = \
-        _get_resource_value_mapping(issue_status, resource_value_mappings)
+    issue_status_type_mapping, issue_status_value_mapping = \
+        _get_resource_mapping(issue_status, resource_value_mappings)
 
     # TODO Set value in the export dictionary
     click.echo("Issue status: {}".format(issue_status_value_mapping))
@@ -397,9 +397,9 @@ def _save_issue_priority(issue_priority, resource_value_mappings):
                                     dynamically defined at runtime
                                     by the final user
     """
-    issue_priority_value_mapping = \
-        _get_resource_value_mapping(issue_priority, resource_value_mappings,
-                                    resource_type="issue_priority")
+    issue_priority_type_mapping, issue_priority_value_mapping = \
+        _get_resource_mapping(issue_priority, resource_value_mappings,
+                              resource_type="issue_priority")
 
     # TODO Set value in the export dictionary
     click.echo("Issue priority: {}".format(issue_priority_value_mapping))
@@ -454,12 +454,12 @@ def _save_assignee(assignee, resource_value_mappings,
     """
     # If the assignee is not a group, that means is a user...
     if not is_group:
-        assignee_value_mapping = \
-            _get_resource_value_mapping(assignee, resource_value_mappings,
-                                        default_value_field='login')
+        assignee_type_mapping, assignee_value_mapping = \
+            _get_resource_mapping(assignee, resource_value_mappings,
+                                  default_value_field='login')
     else:
-        assignee_value_mapping = \
-            _get_resource_value_mapping(assignee, resource_value_mappings)
+        assignee_type_mapping, assignee_value_mapping = \
+            _get_resource_mapping(assignee, resource_value_mappings)
 
     # TODO Set value in the export dictionary
     click.echo("Assignee: {}".format(assignee_value_mapping))
@@ -475,9 +475,9 @@ def _save_issue_category(issue_category, project_id, resource_value_mappings):
                                     dynamically defined at runtime
                                     by the final user
     """
-    issue_category_value_mapping = \
-        _get_resource_value_mapping(issue_category, resource_value_mappings,
-                                    project_id=project_id)
+    issue_category_type_mapping, issue_category_value_mapping = \
+        _get_resource_mapping(issue_category, resource_value_mappings,
+                              project_id=project_id)
 
     # TODO Set value in the export dictionary
     click.echo("Issue category: {}".format(issue_category_value_mapping))
@@ -579,10 +579,15 @@ def _save_time_entries(time_entries, referenced_users_ids):
         click.echo("Time entry: {}".format(time_entry))
 
 
-def _get_resource_value_mapping(resource, resource_value_mappings,
-                                resource_type=None, project_id=None,
-                                default_value_field=None):
+def _get_resource_mapping(resource, resource_value_mappings,
+                          resource_type=None, project_id=None,
+                          default_value_field=None):
     """
+    Find a Jira mapping for both type and value of a Redmine resource instance.
+    The function attempt to find a user-defined mapping in the configuration
+    settings, falling back to dynamically define new mappings prompting the
+    user at runtime.
+
     :param resource: Resource instance
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
@@ -594,7 +599,7 @@ def _get_resource_value_mapping(resource, resource_value_mappings,
                                 value mapping is found. If defined, it
                                 basically turns off the dynamic resource value
                                 mapping feature.
-    :return: The Jira value for the resource
+    :return: The Jira mapped type and value for the resource instance
     """
     # Guess Redmine resource type by class name
     # unless explicitly specified
@@ -646,7 +651,7 @@ def _get_resource_value_mapping(resource, resource_value_mappings,
             break
 
     if jira_resource_value is None and default_value_field is not None:
-        return getattr(resource, default_value_field)
+        return jira_resource_type, getattr(resource, default_value_field)
 
     if jira_resource_value is None:
         # Search for a dynamically user-defined value mapping
@@ -732,7 +737,7 @@ def _get_resource_value_mapping(resource, resource_value_mappings,
         resource_value_mappings.setdefault(rrt, {}) \
                                .setdefault(jrt, {})[rrv] = jira_resource_value
 
-    return jira_resource_value
+    return jira_resource_type, jira_resource_value
 
 
 def _list_unmapped_referenced_users(users, referenced_users_ids):
