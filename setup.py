@@ -44,7 +44,7 @@ setup(
     author="Michele Cardone",
     author_email='michele.cardone82@gmail.com',
     url='https://github.com/wandering-tales/redmine2jira',
-    packages=find_packages(include=['redmine2jira.*']),
+    packages=find_packages(include=['redmine2jira', 'redmine2jira.*']),
     entry_points={
         'console_scripts': [
             'redmine2jira=redmine2jira.cli:main'
