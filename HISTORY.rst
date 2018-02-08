@@ -2,6 +2,19 @@
 History
 =======
 
+0.6.2 (2018-02-08)
+------------------
+
+Improvements
+************
+
+* Add pyenv support for Tox
+
+Fixes
+*****
+* Fix packages include directive in ``setup.py``
+
+
 0.6.1 (2018-02-07)
 ------------------
 
