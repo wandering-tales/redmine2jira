@@ -648,7 +648,7 @@ def _get_resource_mapping(resource, resource_value_mappings,
             current_resource_type_field_mappings.items():
         # Dynamically compose resource type mapping setting name
         custom_mapping_setting_name = \
-            'CUSTOM_REDMINE_{}_JIRA_{}_MAPPINGS'.format(
+            'REDMINE_{}_JIRA_{}_MAPPINGS'.format(
                 redmine_resource_type.upper(),
                 jira_resource_type.upper())
 
@@ -771,7 +771,7 @@ def _get_resource_mapping(resource, resource_value_mappings,
 def _list_unmapped_referenced_users(users, referenced_users_ids):
     """
     Print in a table fashion all the users not explicitly mapped to specific
-    Jira users, via the CUSTOM_REDMINE_USER_JIRA_USER_MAPPINGS setting.
+    Jira users, via the REDMINE_USER_JIRA_USER_MAPPINGS setting.
     The purpose is to warn the final user to create them in the target Jira
     instance before importing the issues.
 
@@ -789,7 +789,7 @@ def _list_unmapped_referenced_users(users, referenced_users_ids):
     unmapped_referenced_users = \
         [v for k, v in users.items()
          if k in referenced_users_ids and
-            v.login not in config.CUSTOM_REDMINE_USER_JIRA_USER_MAPPINGS]
+            v.login not in config.REDMINE_USER_JIRA_USER_MAPPINGS]
 
     if unmapped_referenced_users:
         click.echo("Loading users referenced in the exported issues...")
@@ -801,7 +801,7 @@ def _list_unmapped_referenced_users(users, referenced_users_ids):
 
         click.echo()
         click.echo("No static mappings have been defined for them via the "
-                   "CUSTOM_REDMINE_USER_JIRA_USER_MAPPINGS setting.")
+                   "REDMINE_USER_JIRA_USER_MAPPINGS setting.")
         click.echo("Ensure the above users already exist in your "
                    "Jira instance before starting the import.")
 

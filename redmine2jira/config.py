@@ -49,7 +49,7 @@ ISSUE_ID_FILTER_AVAILABLE = True
 # NOTE: The concept of "Jira user" is also extended to Jira Service Desk
 #       "portal only customers".
 #
-CUSTOM_REDMINE_USER_JIRA_USER_MAPPINGS = {
+REDMINE_USER_JIRA_USER_MAPPINGS = {
     #
     # Example:
     #
@@ -75,7 +75,7 @@ CUSTOM_REDMINE_USER_JIRA_USER_MAPPINGS = {
 # NOTE: The concept of "Jira user" is also extended to Jira Service Desk
 #       "portal only customers".
 #
-CUSTOM_REDMINE_GROUP_JIRA_USER_MAPPINGS = {
+REDMINE_GROUP_JIRA_USER_MAPPINGS = {
     #
     # Example:
     #
@@ -88,7 +88,7 @@ CUSTOM_REDMINE_GROUP_JIRA_USER_MAPPINGS = {
 # Jira project keys. When no mapping is defined for a referenced project
 # the tool will prompt the user to input a Jira project key.
 #
-CUSTOM_REDMINE_PROJECT_JIRA_PROJECT_MAPPINGS = {
+REDMINE_PROJECT_JIRA_PROJECT_MAPPINGS = {
     #
     # Example:
     #
@@ -102,7 +102,7 @@ CUSTOM_REDMINE_PROJECT_JIRA_PROJECT_MAPPINGS = {
 # case sensitive. When no mapping is defined for a referenced tracker
 # the tool will prompt the user to input a Jira issue type name.
 #
-CUSTOM_REDMINE_TRACKER_JIRA_ISSUE_TYPE_MAPPINGS = {
+REDMINE_TRACKER_JIRA_ISSUE_TYPE_MAPPINGS = {
     #
     # Example:
     #
@@ -115,7 +115,7 @@ CUSTOM_REDMINE_TRACKER_JIRA_ISSUE_TYPE_MAPPINGS = {
 # case sensitive. When no mapping is defined for a referenced issue status
 # the tool will prompt the user to input a Jira issue status name.
 #
-CUSTOM_REDMINE_ISSUE_STATUS_JIRA_ISSUE_STATUS_MAPPINGS = {
+REDMINE_ISSUE_STATUS_JIRA_ISSUE_STATUS_MAPPINGS = {
     #
     # Example:
     #
@@ -128,7 +128,7 @@ CUSTOM_REDMINE_ISSUE_STATUS_JIRA_ISSUE_STATUS_MAPPINGS = {
 # case sensitive. When no mapping is defined for a referenced issue priority
 # the tool will prompt the user to input a Jira issue priority name.
 #
-CUSTOM_REDMINE_ISSUE_PRIORITY_JIRA_ISSUE_PRIORITY_MAPPINGS = {
+REDMINE_ISSUE_PRIORITY_JIRA_ISSUE_PRIORITY_MAPPINGS = {
     #
     # Example:
     #
@@ -146,7 +146,7 @@ CUSTOM_REDMINE_ISSUE_PRIORITY_JIRA_ISSUE_PRIORITY_MAPPINGS = {
 # When no mapping is defined for a referenced issue category
 # the tool will prompt the user to input a Jira component name.
 #
-CUSTOM_REDMINE_ISSUE_CATEGORY_JIRA_COMPONENT_MAPPINGS = {
+REDMINE_ISSUE_CATEGORY_JIRA_COMPONENT_MAPPINGS = {
     #
     # Example:
     #
@@ -167,7 +167,7 @@ CUSTOM_REDMINE_ISSUE_CATEGORY_JIRA_COMPONENT_MAPPINGS = {
 # When no mapping is defined for a referenced issue category
 # the tool will prompt the user to input a Jira label.
 #
-CUSTOM_REDMINE_ISSUE_CATEGORY_JIRA_LABEL_MAPPINGS = {
+REDMINE_ISSUE_CATEGORY_JIRA_LABEL_MAPPINGS = {
     #
     # Example:
     #
