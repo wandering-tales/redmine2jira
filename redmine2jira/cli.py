@@ -639,15 +639,15 @@ def _get_resource_mapping(resource, resource_value_mappings,
     jira_resource_value = None
     field_mapping = None
 
-    current_resource_type_field_mappings = \
+    jira_resource_type_field_mappings = \
         {k[1]: v for k, v in RESOURCE_TYPE_FIELD_MAPPINGS.items()
          if k[0] == redmine_resource_type}
 
     # Search for a statically user-defined value mapping
     for jira_resource_type, field_mapping in \
-            current_resource_type_field_mappings.items():
+            jira_resource_type_field_mappings.items():
         # Dynamically compose resource type mapping setting name
-        custom_mapping_setting_name = \
+        resource_type_mapping_setting_name = \
             'REDMINE_{}_JIRA_{}_MAPPINGS'.format(
                 redmine_resource_type.upper(),
                 jira_resource_type.upper())
@@ -658,7 +658,7 @@ def _get_resource_mapping(resource, resource_value_mappings,
         # Try to get the Jira resource value from mappings
         # statically defined in configuration settings
         static_resource_value_mappings = \
-            getattr(config, custom_mapping_setting_name, {})
+            getattr(config, resource_type_mapping_setting_name, {})
 
         if project_id is not None:
             static_resource_value_mappings = \
@@ -680,7 +680,7 @@ def _get_resource_mapping(resource, resource_value_mappings,
     if jira_resource_value is None:
         # Search for a dynamically user-defined value mapping
         for jira_resource_type, field_mapping \
-                in current_resource_type_field_mappings.items():
+                in jira_resource_type_field_mappings.items():
             # Get the Redmine resource value
             redmine_resource_value = getattr(resource, field_mapping[0])
 
@@ -714,7 +714,7 @@ def _get_resource_mapping(resource, resource_value_mappings,
 
         # If the Redmine resource type can be mapped
         # to more than one Jira resource types...
-        if len(current_resource_type_field_mappings.keys()) > 1:
+        if len(jira_resource_type_field_mappings.keys()) > 1:
             # ...prompt user to choose one
             click.echo(
                 "Missing value mapping for Redmine {} '{}'."
@@ -727,7 +727,7 @@ def _get_resource_mapping(resource, resource_value_mappings,
 
             static_jira_resource_type_choices = \
                 {i + 1: jrt
-                 for i, jrt in enumerate(current_resource_type_field_mappings)}
+                 for i, jrt in enumerate(jira_resource_type_field_mappings)}
 
             for k, v in static_jira_resource_type_choices.items():
                 click.echo("{:d}) {}".format(k, humanize(v)))
