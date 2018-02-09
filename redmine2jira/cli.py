@@ -629,6 +629,9 @@ def _get_resource_mapping(resource, resource_value_mappings,
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
+    :param resource_type: Redmine resource type string. If not provided,
+                          the default, the Redmine resource type is derived
+                          from the resource instance class name.
     :param project_id: ID of the project the resource value is bound to,
                        if any.
     :param default_value_field: The name of the field of the resource where
