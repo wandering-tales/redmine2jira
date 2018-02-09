@@ -684,6 +684,9 @@ def _get_resource_mapping(resource, resource_value_mappings,
             # A Jira resource value mapping has been found. Exit!
             break
 
+    # A static user-defined mapping has not been found.
+    # We retrieve the Jira value mapping from a specific field of the
+    # original Redmine resource, as it is.
     if jira_resource_value is None and default_value_field is not None:
         return jira_resource_type, getattr(resource, default_value_field)
 
