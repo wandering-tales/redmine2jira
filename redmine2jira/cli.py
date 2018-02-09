@@ -765,8 +765,15 @@ def _get_resource_mapping(resource, resource_value_mappings,
         jrt = jira_resource_type
         rrv = redmine_resource_value
 
-        resource_value_mappings.setdefault(rrt, {}) \
-                               .setdefault(jrt, {})[rrv] = jira_resource_value
+        dynamic_resource_value_mappings = \
+            resource_value_mappings.setdefault(rrt, {}) \
+                                   .setdefault(jrt, {})
+
+        if project_id is not None:
+            dynamic_resource_value_mappings = \
+                dynamic_resource_value_mappings.setdefault(project_id, {})
+
+        dynamic_resource_value_mappings[rrv] = jira_resource_value
 
     return jira_resource_type, jira_resource_value
 
