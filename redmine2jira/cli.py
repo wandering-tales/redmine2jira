@@ -674,7 +674,7 @@ def _get_resource_mapping(resource, resource_value_mappings,
         # Try to get the Jira resource value from mappings
         # statically defined in configuration settings
         static_resource_value_mappings = \
-            getattr(config, custom_mapping_setting_name)
+            getattr(config, custom_mapping_setting_name, {})
 
         if project_id is not None:
             static_resource_value_mappings = \
