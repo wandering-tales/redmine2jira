@@ -4,6 +4,11 @@
 
 from __future__ import absolute_import
 
+try:
+    from contextlib import suppress
+except ImportError:
+    from contextlib2 import suppress
+
 from datetime import timedelta
 from functools import reduce
 from itertools import chain
@@ -15,6 +20,7 @@ from click_default_group import DefaultGroup
 from inflection import humanize, underscore
 from isodate import duration_isoformat
 from redminelib import Redmine
+from redminelib.exceptions import ForbiddenError
 from redminelib.resultsets import ResourceSet
 from six import text_type
 from six.moves.urllib.parse import unquote
@@ -39,6 +45,47 @@ RESOURCE_TYPE_FIELD_MAPPINGS = {
     ('issue_category', 'component'): ('name', 'name'),
     ('issue_category', 'label'): ('name', 'name')
 }
+
+# Redmine and Jira issue custom field type mappings.
+# A single Redmine issue custom field type may correspond
+# up to two Jira issue custom field types, respectively
+# if they accept single and multiple values.
+#
+ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS = {
+    # Currently Jira does not support boolean custom fields.
+    # Here's an open suggestion:
+    #
+    # https://jira.atlassian.com/browse/JRACLOUD-4689
+    #
+    # A workaround is to map a Redmine boolean custom fields
+    # with a Jira select custom field having Yes/No as options.
+    'bool': {'single': 'com.atlassian.jira.plugin.system.'
+                       'customfieldtypes:select'},
+
+    'date': {'single': 'com.atlassian.jira.plugin.system.'
+                       'customfieldtypes:datepicker'},
+    'float': {'single': 'com.atlassian.jira.plugin.system.'
+                        'customfieldtypes:float'},
+    'int': {'single': 'com.atlassian.jira.plugin.system.'
+                      'customfieldtypes:float'},
+    'link': {'single': 'com.atlassian.jira.plugin.system.'
+                       'customfieldtypes:url'},
+    'list': {'single': 'com.atlassian.jira.plugin.system.'
+                       'customfieldtypes:select',
+             'multiple': 'com.atlassian.jira.plugin.system.'
+                         'customfieldtypes:multiselect'},
+    'text': {'single': 'com.atlassian.jira.plugin.system.'
+                       'customfieldtypes:textarea'},
+    'string': {'single': 'com.atlassian.jira.plugin.system.'
+                         'customfieldtypes:textfield'},
+    'user': {'single': 'com.atlassian.jira.plugin.system.'
+                       'customfieldtypes:userpicker',
+             'multiple': 'com.atlassian.jira.plugin.system.'
+                         'customfieldtypes:multiuserpicker'},
+    'version': {'single': 'com.atlassian.jira.plugin.system.'
+                          'customfieldtypes:version',
+                'multiple': 'com.atlassian.jira.plugin.system.'
+                            'customfieldtypes:multiversion'}
 }
 
 MISSING_RESOURCE_MAPPINGS_MESSAGE = "Resource value mappings definition"
@@ -75,7 +122,7 @@ def export_issues(output, query_string):
                .format(len(issues), "s" if len(issues) > 1 else ""))
 
     # Get all Redmine users, groups, projects, trackers, issue statuses,
-    # issue priorities and store them by ID
+    # issue priorities, issue custom fields and store them by ID
 
     users = {user.id: user for user in chain(redmine.user.all(),
                                              redmine.user.filter(status=3))}
@@ -95,8 +142,14 @@ def export_issues(output, query_string):
         for issue_priority in redmine.enumeration
                                      .filter(resource='issue_priorities')}
 
-    # Get all Redmine issue categories and store them by project ID
-    # and, for each project ID, by issue category ID
+    issue_custom_fields = \
+        {cf.id: cf for cf in redmine.custom_field.all()
+         if cf.customized_type == 'issue'}
+
+    # Get all Redmine issue categories and versions
+    # and store them by project ID and, respectively,
+    # by issue category ID and version ID
+
     issue_categories = {
         project.id: {
             issue_category.id: issue_category
@@ -105,9 +158,23 @@ def export_issues(output, query_string):
         for project in projects.values()
     }
 
-    referenced_users_ids = _export_issues(issues, users, groups,
-                                          projects, trackers, issue_statuses,
-                                          issue_priorities, issue_categories)
+    # To build versions dictionary on a per project basis
+    # we need to ignore 403 errors for projects where
+    # no versions have been defined yet.
+    versions = dict()
+
+    for project in projects.values():
+        versions[project.id] = dict()
+
+        with suppress(ForbiddenError):
+            for version in project.versions:
+                versions[project.id][version.id] = version
+
+    referenced_users_ids = _export_issues(issues, users, groups, projects,
+                                          trackers, issue_statuses,
+                                          issue_priorities,
+                                          issue_custom_fields,
+                                          issue_categories, versions)
 
     click.echo("Issues exported in '{}'!".format(output.name))
 
@@ -180,8 +247,9 @@ def _get_all_issues():
     return redmine.issue.all()
 
 
-def _export_issues(issues, users, groups, projects, trackers,
-                   issue_statuses, issue_priorities, issue_categories):
+def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
+                   issue_priorities, issue_custom_fields, issue_categories,
+                   versions):
     """
     Export issues and their relations to a JSON file which structure is
     compatible with the JIRA Importers plugin (JIM).
@@ -207,6 +275,7 @@ def _export_issues(issues, users, groups, projects, trackers,
     - Trackers
     - Issue statuses
     - Issue priorities
+    - Issue custom fields
     - Issue categories (on a per-project basis)
 
     Though users references can be found both in the issues properties (author,
@@ -221,15 +290,12 @@ def _export_issues(issues, users, groups, projects, trackers,
     :param trackers: All Redmine trackers
     :param issue_statuses: All Redmine issue statuses
     :param issue_priorities: All Redmine issue priorities
+    :param issue_custom_fields: All Redmine issue custom fields
     :param issue_categories: All Redmine issue categories
                              on a per-project basis
+    :param versions: All Redmine versions on a per-project basis
     :return: ID's of users referenced in the issues being exported
     """
-    # Get users related issue custom field ID's
-    users_related_issue_custom_field_ids = \
-        {cf.id for cf in redmine.custom_field.all()
-         if cf.customized_type == 'issue' and cf.field_format == 'user'}
-
     issues_export = dict()
     referenced_users_ids = set()
     resource_value_mappings = dict()
@@ -289,8 +355,9 @@ def _export_issues(issues, users, groups, projects, trackers,
 
         # Save custom fields
         if hasattr(issue, 'custom_fields'):
-            _save_custom_fields(issue.custom_fields,
-                                users_related_issue_custom_field_ids,
+            _save_custom_fields(issue.custom_fields, issue.project.id,
+                                issue_custom_fields, users, versions,
+                                resource_value_mappings, issue_export,
                                 referenced_users_ids)
 
         # Save related resources
@@ -516,26 +583,92 @@ def _save_estimated_hours(estimated_hours, issue_export):
         duration_isoformat(timedelta(hours=estimated_hours))
 
 
-def _save_custom_fields(custom_fields, users_related_issue_custom_field_ids,
+def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
+                        versions, resource_value_mappings, issue_export,
                         referenced_users_ids):
     """
     Save issue custom fields to export dictionary.
 
     :param custom_fields: Issue custom fields
-    :param users_related_issue_custom_field_ids: Set of ID's of all the users
-                                                 related issue custom fields
+    :param project_id: ID of the project the issue belongs to
+    :param issue_custom_fields: All Redmine issue custom fields definitions
+    :param users: All Redmine users
+    :param versions: All Redmine versions on a per-project basis
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    :param issue_export: Single issue export dictionary
     :param referenced_users_ids: Set of ID's of referenced users
                                  found so far in the issue resource set
     """
-    for custom_field in (cf for cf in custom_fields
-                         if cf.id in users_related_issue_custom_field_ids):
-        referenced_users_ids |= \
-            set(custom_field.value) \
-            if getattr(custom_field, 'multiple', False) \
-            else {custom_field.value}
+    for custom_field in custom_fields:
+        custom_field_dict = {
+            'fieldName': _get_resource_mapping(custom_field,
+                                               resource_value_mappings)[1]
+        }
 
-        # TODO Set value in the export dictionary
-        click.echo("Custom field: {}".format(custom_field))
+        custom_field_def = next(cf for cf_id, cf in issue_custom_fields.items()
+                                if cf_id == custom_field.id)
+
+        if getattr(custom_field_def, 'multiple', False):
+            custom_field_dict['fieldType'] = \
+                ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS[
+                    custom_field_def.field_format]['multiple']
+        else:
+            custom_field_dict['fieldType'] = \
+                ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS[
+                    custom_field_def.field_format]['single']
+
+        redmine_value = custom_field.value
+        jira_value = None
+
+        if redmine_value:
+            if custom_field_def.field_format == 'bool':
+                if redmine_value == '1':
+                    jira_value = 'Yes'
+                elif redmine_value == '0':
+                    jira_value = 'No'
+            elif custom_field_def.field_format == 'date':
+                jira_value = redmine_value.isoformat()
+            elif custom_field_def.field_format == 'float':
+                jira_value = float(redmine_value)
+            elif custom_field_def.field_format == 'int':
+                jira_value = int(redmine_value)
+            elif custom_field_def.field_format in ['text', 'string']:
+                jira_value = text2confluence_wiki(redmine_value)
+            elif custom_field_def.field_format == 'user':
+                if getattr(custom_field_def, 'multiple', False):
+                    user_ids = set(map(int, redmine_value))
+                    jira_value = [user.login for user_id, user in users.items()
+                                  if user_id in user_ids]
+
+                    referenced_users_ids |= user_ids
+                else:
+                    user_id = int(redmine_value)
+                    jira_value = users[user_id].login
+
+                    referenced_users_ids.add(user_id)
+            elif custom_field_def.field_format == 'version':
+                if getattr(custom_field_def, 'multiple', False):
+                    version_ids = set(map(int, redmine_value))
+                    jira_value = [
+                        version.name
+                        for version_id, version in versions[project_id].items()
+                        if version_id in version_ids]
+                else:
+                    version_id = int(redmine_value)
+                    jira_value = versions[project_id][version_id].name
+            elif custom_field_def.field_format in ['link', 'list']:
+                jira_value = redmine_value
+            else:
+                raise NotImplementedError(
+                    "'{}' field format not supported!"
+                    .format(custom_field_def.field_format))
+
+        custom_field_dict['value'] = jira_value
+
+        issue_export.setdefault('customFieldValues', []) \
+                    .append(custom_field_dict)
 
 
 def _save_watchers(watchers, referenced_users_ids):

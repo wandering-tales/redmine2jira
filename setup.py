@@ -14,6 +14,7 @@ with open('HISTORY.rst') as history_file:
 requirements = [
     'Click>=6.0',
     'click-default-group>=1.2',
+    'contextlib2==0.5.5',
     'inflection>=0.3',
     'isodate>=0.6',
     'lxml>=4.1',

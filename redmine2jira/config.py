@@ -136,6 +136,20 @@ REDMINE_ISSUE_PRIORITY_JIRA_ISSUE_PRIORITY_MAPPINGS = {
     #    ...
 }
 
+# Custom Redmine to Jira custom fields mappings used during issue export.
+# The mapping is defined between Redmine and Jira custom field names,
+# case sensitive. When no mapping is defined for a referenced custom field
+# the tool will prompt the user to input a Jira custom field name.
+#
+REDMINE_CUSTOM_FIELD_JIRA_CUSTOM_FIELD_MAPPINGS = {
+    #
+    # Example:
+    #
+    #    'Severity': 'Severity',
+    #    ...
+}
+
+
 # Custom Redmine issue category to Jira component mappings
 # used during issue export.
 # The mapping is defined between Redmine issue category names
