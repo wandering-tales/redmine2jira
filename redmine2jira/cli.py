@@ -29,30 +29,16 @@ from redmine2jira.utils.text import text2confluence_wiki
 # NOTE: A Redmine resource type may corresponds
 #       to one or more Jira resource types.
 RESOURCE_TYPE_FIELD_MAPPINGS = {
-    'user': {
-        'user': ('login', 'username')
-    },
-    'group': {
-        'user': ('name', 'username'),
-        'user1': ('name', 'username'),
-        'user2': ('name', 'username')
-    },
-    'project': {
-        'project': ('identifier', 'key')
-    },
-    'tracker': {
-        'issue_type': ('name', 'name')
-    },
-    'issue_status': {
-        'issue_status': ('name', 'name')
-    },
-    'issue_priority': {
-        'issue_priority': ('name', 'name')
-    },
-    'issue_category': {
-        'component': ('name', 'name'),
-        'label': ('name', 'name')
-    }
+    ('user', 'user'): ('login', 'username'),
+    ('group', 'user'): ('name', 'username'),
+    ('project', 'project'): ('identifier', 'key'),
+    ('tracker', 'issue_type'): ('name', 'name'),
+    ('issue_status', 'issue_status'): ('name', 'name'),
+    ('issue_priority', 'issue_priority'): ('name', 'name'),
+    ('custom_field', 'custom_field'): ('name', 'name'),
+    ('issue_category', 'component'): ('name', 'name'),
+    ('issue_category', 'label'): ('name', 'name')
+}
 }
 
 MISSING_RESOURCE_MAPPINGS_MESSAGE = "Resource value mappings definition"
@@ -654,7 +640,8 @@ def _get_resource_mapping(resource, resource_value_mappings,
     field_mapping = None
 
     current_resource_type_field_mappings = \
-        RESOURCE_TYPE_FIELD_MAPPINGS[redmine_resource_type]
+        {k[1]: v for k, v in RESOURCE_TYPE_FIELD_MAPPINGS.items()
+         if k[0] == redmine_resource_type}
 
     # Search for a statically user-defined value mapping
     for jira_resource_type, field_mapping in \
@@ -699,16 +686,17 @@ def _get_resource_mapping(resource, resource_value_mappings,
 
             # Try to get the Jira resource value from mappings
             # dynamically defined at runtime
-            dynamic_resource_value_mapping = resource_value_mappings \
-                .get(redmine_resource_type, {})\
-                .get(jira_resource_type, {})
-
-            if project_id is not None:
-                dynamic_resource_value_mapping = \
-                    dynamic_resource_value_mapping.get(project_id, {})
-
-            jira_resource_value = dynamic_resource_value_mapping \
-                .get(redmine_resource_value, None)
+            if project_id is None:
+                jira_resource_value = \
+                    resource_value_mappings.get((redmine_resource_type,
+                                                 jira_resource_type,
+                                                 redmine_resource_value), None)
+            else:
+                jira_resource_value = \
+                    resource_value_mappings.get((redmine_resource_type,
+                                                 jira_resource_type,
+                                                 project_id,
+                                                 redmine_resource_value), None)
 
             if jira_resource_value is not None:
                 # A Jira resource value mapping has been found. Exit!
@@ -718,8 +706,7 @@ def _get_resource_mapping(resource, resource_value_mappings,
         # No value mapping found!
 
         # If there not exist dynamically user-defined value mappings...
-        if not any(True for jrt in resource_value_mappings.values()
-                   for _ in jrt):
+        if not resource_value_mappings:
             click.echo()
             click.echo("-" * len(MISSING_RESOURCE_MAPPINGS_MESSAGE))
             click.echo(MISSING_RESOURCE_MAPPINGS_MESSAGE)
@@ -766,20 +753,17 @@ def _get_resource_mapping(resource, resource_value_mappings,
                     redmine_resource_value),
             prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
 
-        # Setting dictionary key aliases
-        rrt = redmine_resource_type
-        jrt = jira_resource_type
-        rrv = redmine_resource_value
-
-        dynamic_resource_value_mappings = \
-            resource_value_mappings.setdefault(rrt, {}) \
-                                   .setdefault(jrt, {})
-
-        if project_id is not None:
-            dynamic_resource_value_mappings = \
-                dynamic_resource_value_mappings.setdefault(project_id, {})
-
-        dynamic_resource_value_mappings[rrv] = jira_resource_value
+        if project_id is None:
+            resource_value_mappings[
+                (redmine_resource_type,
+                 jira_resource_type,
+                 redmine_resource_value)] = jira_resource_value
+        else:
+            resource_value_mappings[
+                (redmine_resource_type,
+                 jira_resource_type,
+                 project_id,
+                 redmine_resource_value)] = jira_resource_value
 
     return jira_resource_type, jira_resource_value
 
