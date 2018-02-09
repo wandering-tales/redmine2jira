@@ -650,12 +650,6 @@ def _get_resource_mapping(resource, resource_value_mappings,
     jira_resource_value = None
     field_mapping = None
 
-    # Get all Jira resource types mapped by the the Redmine one.
-    # Even though a Redmine resource type can be mapped
-    # to more than one Jira resource type, user-defined
-    # Redmine values have one-to-one mappings with Jira
-    # ones: if a mapping exists the Jira resource type
-    # is automatically guessed.
     current_resource_type_field_mappings = \
         RESOURCE_TYPE_FIELD_MAPPINGS[redmine_resource_type]
 
