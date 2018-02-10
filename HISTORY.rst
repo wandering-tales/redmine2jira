@@ -2,6 +2,35 @@
 History
 =======
 
+0.7.0 (2018-02-10)
+------------------
+
+New features
+************
+
+* Implemented issue custom fields save method
+
+Improvements
+************
+
+* Used tuples as dictionary keys for both resource type fields mappings and dynamic resource value mappings
+* Added comment to explain what happens when no static user-defined mapping has been found and dynamic resource value mapping feature is disabled
+* Removed leftovers of old project name "Redmine XLS Export to Jira"
+
+Changes
+*******
+
+* Removed 'CUSTOM_' prefix from the resource value mappings setting names
+
+Fixes
+*****
+
+* Fixed setting of dynamic resource value mapping when the resource type is defined on a per-project basis
+* Removed misleading comment. When a Redmine resource type is mapped to more than one Jira resource type the final user is free to set value mappings across all possible resource type combinations.
+* Added default empty dictionary if the resource type mapping setting is not found
+* Minor docstring fixes
+
+
 0.6.2 (2018-02-08)
 ------------------
 
