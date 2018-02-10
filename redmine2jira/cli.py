@@ -361,7 +361,8 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
                                 referenced_users_ids)
 
         # Save related resources
-        _save_watchers(issue.watchers, referenced_users_ids)
+        _save_watchers(issue.watchers, users, issue_export,
+                       referenced_users_ids)
         _save_attachments(issue.attachments, referenced_users_ids)
         _save_journals(issue.journals, referenced_users_ids)
         _save_time_entries(issue.time_entries, referenced_users_ids)
@@ -671,19 +672,21 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                     .append(custom_field_dict)
 
 
-def _save_watchers(watchers, referenced_users_ids):
+def _save_watchers(watchers, users, issue_export, referenced_users_ids):
     """
     Save issue watchers to export dictionary.
 
     :param watchers: Issue watchers
+    :param users: All Redmine users
+    :param issue_export: Single issue export dictionary
     :param referenced_users_ids: Set of ID's of referenced users
                                  found so far in the issue resource set
     """
     for watcher in watchers:
-        referenced_users_ids.add(watcher.id)
+        issue_export.setdefault('watchers', []) \
+                    .append(users[watcher.id].login)
 
-        # TODO Set value in the export dictionary
-        click.echo("Watcher: {}".format(watcher))
+        referenced_users_ids.add(watcher.id)
 
 
 def _save_attachments(attachments, referenced_users_ids):
