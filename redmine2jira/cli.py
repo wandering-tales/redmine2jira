@@ -641,6 +641,13 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                 jira_value = int(redmine_value)
             elif custom_field_def.field_format in ['text', 'string']:
                 if config.REDMINE_TEXT_FORMATTING != 'none':
+                    # Here we should check also if text formatting is enabled
+                    # at custom field level via the "Text Formatting" option.
+                    # Unfortunately the current version of Redmine REST API
+                    # for custom fields does not return this property.
+                    # Therefore we make the assumption that if the Redmine
+                    # administrator enabled the text formatting at system
+                    # level, he did it for text custom fields as well.
                     jira_value = text2confluence_wiki(redmine_value)
             elif custom_field_def.field_format == 'user':
                 if getattr(custom_field_def, 'multiple', False):
