@@ -511,7 +511,10 @@ def _save_description(description, issue_export):
     :param description: Issue description
     :param issue_export: Single issue export dictionary
     """
-    issue_export['description'] = text2confluence_wiki(description)
+    if config.REDMINE_TEXT_FORMATTING != 'none':
+        description = text2confluence_wiki(description)
+
+    issue_export['description'] = description
 
 
 def _save_assignee(assignee, resource_value_mappings, issue_export,
@@ -622,7 +625,7 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                     custom_field_def.field_format]['single']
 
         redmine_value = custom_field.value
-        jira_value = None
+        jira_value = redmine_value
 
         if redmine_value:
             if custom_field_def.field_format == 'bool':
@@ -637,7 +640,8 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
             elif custom_field_def.field_format == 'int':
                 jira_value = int(redmine_value)
             elif custom_field_def.field_format in ['text', 'string']:
-                jira_value = text2confluence_wiki(redmine_value)
+                if config.REDMINE_TEXT_FORMATTING != 'none':
+                    jira_value = text2confluence_wiki(redmine_value)
             elif custom_field_def.field_format == 'user':
                 if getattr(custom_field_def, 'multiple', False):
                     user_ids = set(map(int, redmine_value))
@@ -661,7 +665,7 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                     version_id = int(redmine_value)
                     jira_value = versions[project_id][version_id].name
             elif custom_field_def.field_format in ['link', 'list']:
-                jira_value = redmine_value
+                pass
             else:
                 raise NotImplementedError(
                     "'{}' field format not supported!"
