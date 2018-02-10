@@ -365,7 +365,8 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
                        referenced_users_ids)
         _save_attachments(issue.attachments, users, issue_export,
                           referenced_users_ids)
-        _save_journals(issue.journals, referenced_users_ids)
+        _save_journals(issue.journals, users, issue_export,
+                       referenced_users_ids)
         _save_time_entries(issue.time_entries, referenced_users_ids)
 
         # TODO Save sub-tasks
@@ -726,19 +727,57 @@ def _save_attachments(attachments, users, issue_export, referenced_users_ids):
         referenced_users_ids.add(attachment.author.id)
 
 
-def _save_journals(journals, referenced_users_ids):
+def _save_journals(journals, users, issue_export, referenced_users_ids):
     """
     Save issue journals to export dictionary.
 
+    A Redmine issue journal is conceived as a list of changes
+    applied to the issue. Those changes includes both additions
+    of user notes and modifications of issue properties.
+    Following such criteria an user, in a single action, can
+    either add a note, or change several issue properties, or both.
+    Redmine saves all this data atomically in a new "journal" item,
+    which is shown in the issue "History" section under the same
+    sequential number.
+
+    Jira, on the other hand, treats addition of comments and issue
+    property changes as different events, achievable with distinct
+    user actions. Coherently, all issue comments are visible in the
+    "Comments" section, whereas all issue property changes in the
+    "History" section: both lists are chronologically sorted and
+    both are activated clicking the tab having the same name.
+
+    Therefore this method "splits" a single journal item into
+    a comment and a list of changes to issue properties, only
+    if they respectively exist, since a single journal item
+    **may** contain either only a comment, or only a list of
+    changes to issue properties, or both.
+
     :param journals: Issue journals
+    :param users: All Redmine users
+    :param issue_export: Single issue export dictionary
     :param referenced_users_ids: Set of ID's of referenced users
                                  found so far in the issue resource set
     """
     for journal in journals:
-        referenced_users_ids.add(journal.user.id)
+        # If there's a user note in the journal item...
+        if journal.notes:
+            # ...append it to Jira issue comments
+            comment_body = journal.notes
 
-        # TODO Set value in the export dictionary
-        click.echo("Journal: {}".format(journal))
+            if config.REDMINE_TEXT_FORMATTING != 'none':
+                comment_body = text2confluence_wiki(comment_body)
+
+            comment_dict = {
+                "author": users[journal.user.id].login,
+                "body": comment_body,
+                "created": journal.created_on.isoformat()
+            }
+
+            issue_export.setdefault('comments', []) \
+                        .append(comment_dict)
+
+        referenced_users_ids.add(journal.user.id)
 
 
 def _save_time_entries(time_entries, referenced_users_ids):
