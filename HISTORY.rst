@@ -2,6 +2,22 @@
 History
 =======
 
+0.8.0 (2018-02-10)
+------------------
+
+New features
+************
+
+* Implemented issue watchers save method
+* Implemented issue attachments save method
+* Partially implemented issue journals save method. Redmine journal notes are saved to Jira comments.
+
+Fixes
+*****
+
+* Apply conversion to Confluence Wiki notation only if Textile or Markdown text formatting is enabled in settings
+
+
 0.7.0 (2018-02-10)
 ------------------
 
