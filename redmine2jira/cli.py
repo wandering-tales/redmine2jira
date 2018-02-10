@@ -363,7 +363,8 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
         # Save related resources
         _save_watchers(issue.watchers, users, issue_export,
                        referenced_users_ids)
-        _save_attachments(issue.attachments, referenced_users_ids)
+        _save_attachments(issue.attachments, users, issue_export,
+                          referenced_users_ids)
         _save_journals(issue.journals, referenced_users_ids)
         _save_time_entries(issue.time_entries, referenced_users_ids)
 
@@ -689,19 +690,29 @@ def _save_watchers(watchers, users, issue_export, referenced_users_ids):
         referenced_users_ids.add(watcher.id)
 
 
-def _save_attachments(attachments, referenced_users_ids):
+def _save_attachments(attachments, users, issue_export, referenced_users_ids):
     """
     Save issue attachments to export dictionary.
 
     :param attachments: Issue attachments
+    :param users: All Redmine users
+    :param issue_export: Single issue export dictionary
     :param referenced_users_ids: Set of ID's of referenced users
                                  found so far in the issue resource set
     """
     for attachment in attachments:
-        referenced_users_ids.add(attachment.author.id)
+        attachment_dict = {
+            "name": attachment.filename,
+            "attacher": users[attachment.author.id].login,
+            "created": attachment.created_on.isoformat(),
+            "uri": attachment.content_url,
+            "description": attachment.description
+        }
 
-        # TODO Set value in the export dictionary
-        click.echo("Attachment: {}".format(attachment))
+        issue_export.setdefault('attachments', []) \
+                    .append(attachment_dict)
+
+        referenced_users_ids.add(attachment.author.id)
 
 
 def _save_journals(journals, referenced_users_ids):
