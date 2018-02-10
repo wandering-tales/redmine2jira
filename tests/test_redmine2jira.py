@@ -10,7 +10,7 @@ from click.testing import CliRunner
 from redmine2jira import cli
 
 
-class TestRedmineXlsExport2Jira(unittest.TestCase):
+class TestRedmine2Jira(unittest.TestCase):
     """Tests for `redmine2jira` package."""
 
     def setUp(self):
