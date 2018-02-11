@@ -2,6 +2,29 @@
 History
 =======
 
+0.9.0 (2018-02-11)
+------------------
+
+Improvements
+************
+
+* Update coverage from 4.5 to 4.5.1
+
+Changes
+*******
+
+* Disable possibility to skip dynamic value mapping feature
+* Remove printing of issues referenced users at the end of export phase.
+
+  As both static and dynamic value mappings are enabled for user resources,
+  the final user doesn't need to be warned for something he consciously did in either case.
+
+Fixes
+*****
+
+* Honor value mappings for user resources
+
+
 0.8.0 (2018-02-10)
 ------------------
 
