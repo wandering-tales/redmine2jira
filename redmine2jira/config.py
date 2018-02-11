@@ -42,9 +42,9 @@ CHECK_ISSUE_ID_FILTER_AVAILABILITY = True
 ISSUE_ID_FILTER_AVAILABLE = True
 
 # Custom Redmine to Jira user mappings used during issue export.
-# The mapping is defined via usernames (login names). When no
-# mapping is defined for a referenced Redmine user, by default
-# the tool will map the Redmine username to the Jira one as it is.
+# The mapping is defined via usernames (login names). When no mapping
+# is defined for a referenced username the tool will prompt the user to
+# input a Jira username.
 #
 # NOTE: The concept of "Jira user" is also extended to Jira Service Desk
 #       "portal only customers".

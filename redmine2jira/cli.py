@@ -438,8 +438,7 @@ def _save_author(author, resource_value_mappings, issue_export, referenced_users
                                  found so far in the issue resource set
     """
     author_type_mapping, author_value_mapping = \
-        _get_resource_mapping(author, resource_value_mappings,
-                              default_value_field='login')
+        _get_resource_mapping(author, resource_value_mappings)
 
     issue_export['reporter'] = author_value_mapping
 
@@ -550,8 +549,7 @@ def _save_assignee(assignee, resource_value_mappings, issue_export,
     # If the assignee is not a group, that means is a user...
     if not is_group:
         assignee_type_mapping, assignee_value_mapping = \
-            _get_resource_mapping(assignee, resource_value_mappings,
-                                  default_value_field='login')
+            _get_resource_mapping(assignee, resource_value_mappings)
     else:
         assignee_type_mapping, assignee_value_mapping = \
             _get_resource_mapping(assignee, resource_value_mappings)
@@ -665,8 +663,7 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                 if getattr(custom_field_def, 'multiple', False):
                     user_ids = set(map(int, redmine_value))
                     jira_value = [
-                        _get_resource_mapping(user, resource_value_mappings,
-                                              default_value_field='login')[1]
+                        _get_resource_mapping(user, resource_value_mappings)[1]
                         for user_id, user in users.items()
                         if user_id in user_ids
                     ]
@@ -676,8 +673,7 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                     user_id = int(redmine_value)
                     jira_value = \
                         _get_resource_mapping(users[user_id],
-                                              resource_value_mappings,
-                                              default_value_field='login')[1]
+                                              resource_value_mappings)[1]
 
                     referenced_users_ids.add(user_id)
             elif custom_field_def.field_format == 'version':
@@ -719,8 +715,7 @@ def _save_watchers(watchers, users, resource_value_mappings, issue_export, refer
     for watcher in watchers:
         user_type_mapping, user_value_mapping = \
             _get_resource_mapping(users[watcher.id],
-                                  resource_value_mappings,
-                                  default_value_field='login')
+                                  resource_value_mappings)
 
         issue_export.setdefault('watchers', []) \
                     .append(user_value_mapping)
@@ -841,8 +836,7 @@ def _save_time_entries(time_entries, referenced_users_ids):
 
 
 def _get_resource_mapping(resource, resource_value_mappings,
-                          resource_type=None, project_id=None,
-                          default_value_field=None):
+                          resource_type=None, project_id=None):
     """
     Find a Jira mapping for both type and value of a Redmine resource instance.
     The function attempt to find a user-defined mapping in the configuration
@@ -858,11 +852,6 @@ def _get_resource_mapping(resource, resource_value_mappings,
                           from the resource instance class name.
     :param project_id: ID of the project the resource value is bound to,
                        if any.
-    :param default_value_field: The name of the field of the resource where
-                                to get the value if no static resource
-                                value mapping is found. If defined, it
-                                basically turns off the dynamic resource value
-                                mapping feature.
     :return: The Jira mapped type and value for the resource instance
     """
     # Guess Redmine resource type by class name
@@ -908,12 +897,6 @@ def _get_resource_mapping(resource, resource_value_mappings,
         if jira_resource_value is not None:
             # A Jira resource value mapping has been found. Exit!
             break
-
-    # A static user-defined mapping has not been found.
-    # We retrieve the Jira value mapping from a specific field of the
-    # original Redmine resource, as it is.
-    if jira_resource_value is None and default_value_field is not None:
-        return jira_resource_type, getattr(resource, default_value_field)
 
     if jira_resource_value is None:
         # Search for a dynamically user-defined value mapping
