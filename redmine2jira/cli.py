@@ -315,7 +315,8 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
         # Save required standard fields
         _save_id(issue.id, issue_export)
         _save_subject(issue.subject, issue_export)
-        _save_author(users[issue.author.id], issue_export,
+        _save_author(users[issue.author.id],
+                     resource_value_mappings, issue_export,
                      referenced_users_ids)
         _save_tracker(trackers[issue.tracker.id],
                       resource_value_mappings, issue_export)
@@ -361,11 +362,14 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
                                 referenced_users_ids)
 
         # Save related resources
-        _save_watchers(issue.watchers, users, issue_export,
+        _save_watchers(issue.watchers, users,
+                       resource_value_mappings, issue_export,
                        referenced_users_ids)
-        _save_attachments(issue.attachments, users, issue_export,
+        _save_attachments(issue.attachments, users,
+                          resource_value_mappings, issue_export,
                           referenced_users_ids)
-        _save_journals(issue.journals, users, issue_export,
+        _save_journals(issue.journals, users,
+                       resource_value_mappings, issue_export,
                        referenced_users_ids)
         _save_time_entries(issue.time_entries, referenced_users_ids)
 
@@ -421,16 +425,23 @@ def _save_subject(subject, issue_export):
     issue_export['summary'] = subject
 
 
-def _save_author(author, issue_export, referenced_users_ids):
+def _save_author(author, resource_value_mappings, issue_export, referenced_users_ids):
     """
     Save issue author in the export dictionary.
 
     :param author: Issue author
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
     :param issue_export: Single issue export dictionary
     :param referenced_users_ids: Set of ID's of referenced users
                                  found so far in the issue resource set
     """
-    issue_export['reporter'] = author.login
+    author_type_mapping, author_value_mapping = \
+        _get_resource_mapping(author, resource_value_mappings,
+                              default_value_field='login')
+
+    issue_export['reporter'] = author_value_mapping
 
     referenced_users_ids.add(author.id)
 
@@ -653,13 +664,20 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
             elif custom_field_def.field_format == 'user':
                 if getattr(custom_field_def, 'multiple', False):
                     user_ids = set(map(int, redmine_value))
-                    jira_value = [user.login for user_id, user in users.items()
-                                  if user_id in user_ids]
+                    jira_value = [
+                        _get_resource_mapping(user, resource_value_mappings,
+                                              default_value_field='login')[1]
+                        for user_id, user in users.items()
+                        if user_id in user_ids
+                    ]
 
                     referenced_users_ids |= user_ids
                 else:
                     user_id = int(redmine_value)
-                    jira_value = users[user_id].login
+                    jira_value = \
+                        _get_resource_mapping(users[user_id],
+                                              resource_value_mappings,
+                                              default_value_field='login')[1]
 
                     referenced_users_ids.add(user_id)
             elif custom_field_def.field_format == 'version':
@@ -685,37 +703,53 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                     .append(custom_field_dict)
 
 
-def _save_watchers(watchers, users, issue_export, referenced_users_ids):
+def _save_watchers(watchers, users, resource_value_mappings, issue_export, referenced_users_ids):
     """
     Save issue watchers to export dictionary.
 
     :param watchers: Issue watchers
     :param users: All Redmine users
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
     :param issue_export: Single issue export dictionary
     :param referenced_users_ids: Set of ID's of referenced users
                                  found so far in the issue resource set
     """
     for watcher in watchers:
+        user_type_mapping, user_value_mapping = \
+            _get_resource_mapping(users[watcher.id],
+                                  resource_value_mappings,
+                                  default_value_field='login')
+
         issue_export.setdefault('watchers', []) \
-                    .append(users[watcher.id].login)
+                    .append(user_value_mapping)
 
         referenced_users_ids.add(watcher.id)
 
 
-def _save_attachments(attachments, users, issue_export, referenced_users_ids):
+def _save_attachments(attachments, users, resource_value_mappings,
+                      issue_export, referenced_users_ids):
     """
     Save issue attachments to export dictionary.
 
     :param attachments: Issue attachments
     :param users: All Redmine users
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
     :param issue_export: Single issue export dictionary
     :param referenced_users_ids: Set of ID's of referenced users
                                  found so far in the issue resource set
     """
     for attachment in attachments:
+        user_type_mapping, user_value_mapping = \
+            _get_resource_mapping(users[attachment.author.id],
+                                  resource_value_mappings)
+
         attachment_dict = {
             "name": attachment.filename,
-            "attacher": users[attachment.author.id].login,
+            "attacher": user_value_mapping,
             "created": attachment.created_on.isoformat(),
             "uri": attachment.content_url,
             "description": attachment.description
@@ -727,7 +761,7 @@ def _save_attachments(attachments, users, issue_export, referenced_users_ids):
         referenced_users_ids.add(attachment.author.id)
 
 
-def _save_journals(journals, users, issue_export, referenced_users_ids):
+def _save_journals(journals, users, resource_value_mappings, issue_export, referenced_users_ids):
     """
     Save issue journals to export dictionary.
 
@@ -755,11 +789,18 @@ def _save_journals(journals, users, issue_export, referenced_users_ids):
 
     :param journals: Issue journals
     :param users: All Redmine users
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
     :param issue_export: Single issue export dictionary
     :param referenced_users_ids: Set of ID's of referenced users
                                  found so far in the issue resource set
     """
     for journal in journals:
+        user_type_mapping, user_value_mapping = \
+            _get_resource_mapping(users[journal.user.id],
+                                  resource_value_mappings)
+
         # If there's a user note in the journal item...
         if journal.notes:
             # ...append it to Jira issue comments
@@ -769,7 +810,7 @@ def _save_journals(journals, users, issue_export, referenced_users_ids):
                 comment_body = text2confluence_wiki(comment_body)
 
             comment_dict = {
-                "author": users[journal.user.id].login,
+                "author": user_value_mapping,
                 "body": comment_body,
                 "created": journal.created_on.isoformat()
             }
