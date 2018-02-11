@@ -170,16 +170,11 @@ def export_issues(output, query_string):
             for version in project.versions:
                 versions[project.id][version.id] = version
 
-    referenced_users_ids = _export_issues(issues, users, groups, projects,
-                                          trackers, issue_statuses,
-                                          issue_priorities,
-                                          issue_custom_fields,
-                                          issue_categories, versions)
+    _export_issues(issues, users, groups, projects, trackers,
+                   issue_statuses, issue_priorities, issue_custom_fields,
+                   issue_categories, versions)
 
     click.echo("Issues exported in '{}'!".format(output.name))
-
-    _list_unmapped_referenced_users(users, referenced_users_ids)
-
     click.echo()
     click.echo()
     click.echo("Good Bye!")
@@ -294,10 +289,8 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
     :param issue_categories: All Redmine issue categories
                              on a per-project basis
     :param versions: All Redmine versions on a per-project basis
-    :return: ID's of users referenced in the issues being exported
     """
     issues_export = dict()
-    referenced_users_ids = set()
     resource_value_mappings = dict()
 
     for issue in issues:
@@ -316,8 +309,7 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
         _save_id(issue.id, issue_export)
         _save_subject(issue.subject, issue_export)
         _save_author(users[issue.author.id],
-                     resource_value_mappings, issue_export,
-                     referenced_users_ids)
+                     resource_value_mappings, issue_export)
         _save_tracker(trackers[issue.tracker.id],
                       resource_value_mappings, issue_export)
         _save_issue_status(issue_statuses[issue.status.id],
@@ -342,8 +334,6 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
                 _save_assignee(users[issue.assigned_to.id],
                                resource_value_mappings, issue_export)
 
-                referenced_users_ids.add(issue.assigned_to.id)
-
         if hasattr(issue, 'category'):
             category = issue_categories[issue.project.id][issue.category.id]
 
@@ -358,26 +348,20 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
         if hasattr(issue, 'custom_fields'):
             _save_custom_fields(issue.custom_fields, issue.project.id,
                                 issue_custom_fields, users, versions,
-                                resource_value_mappings, issue_export,
-                                referenced_users_ids)
+                                resource_value_mappings, issue_export)
 
         # Save related resources
         _save_watchers(issue.watchers, users,
-                       resource_value_mappings, issue_export,
-                       referenced_users_ids)
+                       resource_value_mappings, issue_export)
         _save_attachments(issue.attachments, users,
-                          resource_value_mappings, issue_export,
-                          referenced_users_ids)
+                          resource_value_mappings, issue_export)
         _save_journals(issue.journals, users,
-                       resource_value_mappings, issue_export,
-                       referenced_users_ids)
-        _save_time_entries(issue.time_entries, referenced_users_ids)
+                       resource_value_mappings, issue_export)
+        _save_time_entries(issue.time_entries)
 
         # TODO Save sub-tasks
 
         # TODO Save relations
-
-    return referenced_users_ids
 
 
 def _save_project(project, resource_value_mappings, issues_export):
@@ -425,7 +409,7 @@ def _save_subject(subject, issue_export):
     issue_export['summary'] = subject
 
 
-def _save_author(author, resource_value_mappings, issue_export, referenced_users_ids):
+def _save_author(author, resource_value_mappings, issue_export):
     """
     Save issue author in the export dictionary.
 
@@ -434,15 +418,11 @@ def _save_author(author, resource_value_mappings, issue_export, referenced_users
                                     dynamically defined at runtime
                                     by the final user
     :param issue_export: Single issue export dictionary
-    :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set
     """
     author_type_mapping, author_value_mapping = \
         _get_resource_mapping(author, resource_value_mappings)
 
     issue_export['reporter'] = author_value_mapping
-
-    referenced_users_ids.add(author.id)
 
 
 def _save_tracker(tracker, resource_value_mappings, issue_export):
@@ -599,8 +579,7 @@ def _save_estimated_hours(estimated_hours, issue_export):
 
 
 def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
-                        versions, resource_value_mappings, issue_export,
-                        referenced_users_ids):
+                        versions, resource_value_mappings, issue_export):
     """
     Save issue custom fields to export dictionary.
 
@@ -613,8 +592,6 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                                     dynamically defined at runtime
                                     by the final user
     :param issue_export: Single issue export dictionary
-    :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set
     """
     for custom_field in custom_fields:
         custom_field_dict = {
@@ -667,15 +644,11 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                         for user_id, user in users.items()
                         if user_id in user_ids
                     ]
-
-                    referenced_users_ids |= user_ids
                 else:
                     user_id = int(redmine_value)
                     jira_value = \
                         _get_resource_mapping(users[user_id],
                                               resource_value_mappings)[1]
-
-                    referenced_users_ids.add(user_id)
             elif custom_field_def.field_format == 'version':
                 if getattr(custom_field_def, 'multiple', False):
                     version_ids = set(map(int, redmine_value))
@@ -699,7 +672,7 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                     .append(custom_field_dict)
 
 
-def _save_watchers(watchers, users, resource_value_mappings, issue_export, referenced_users_ids):
+def _save_watchers(watchers, users, resource_value_mappings, issue_export):
     """
     Save issue watchers to export dictionary.
 
@@ -709,8 +682,6 @@ def _save_watchers(watchers, users, resource_value_mappings, issue_export, refer
                                     dynamically defined at runtime
                                     by the final user
     :param issue_export: Single issue export dictionary
-    :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set
     """
     for watcher in watchers:
         user_type_mapping, user_value_mapping = \
@@ -720,11 +691,9 @@ def _save_watchers(watchers, users, resource_value_mappings, issue_export, refer
         issue_export.setdefault('watchers', []) \
                     .append(user_value_mapping)
 
-        referenced_users_ids.add(watcher.id)
-
 
 def _save_attachments(attachments, users, resource_value_mappings,
-                      issue_export, referenced_users_ids):
+                      issue_export):
     """
     Save issue attachments to export dictionary.
 
@@ -734,8 +703,6 @@ def _save_attachments(attachments, users, resource_value_mappings,
                                     dynamically defined at runtime
                                     by the final user
     :param issue_export: Single issue export dictionary
-    :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set
     """
     for attachment in attachments:
         user_type_mapping, user_value_mapping = \
@@ -753,10 +720,8 @@ def _save_attachments(attachments, users, resource_value_mappings,
         issue_export.setdefault('attachments', []) \
                     .append(attachment_dict)
 
-        referenced_users_ids.add(attachment.author.id)
 
-
-def _save_journals(journals, users, resource_value_mappings, issue_export, referenced_users_ids):
+def _save_journals(journals, users, resource_value_mappings, issue_export):
     """
     Save issue journals to export dictionary.
 
@@ -788,8 +753,6 @@ def _save_journals(journals, users, resource_value_mappings, issue_export, refer
                                     dynamically defined at runtime
                                     by the final user
     :param issue_export: Single issue export dictionary
-    :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set
     """
     for journal in journals:
         user_type_mapping, user_value_mapping = \
@@ -813,20 +776,14 @@ def _save_journals(journals, users, resource_value_mappings, issue_export, refer
             issue_export.setdefault('comments', []) \
                         .append(comment_dict)
 
-        referenced_users_ids.add(journal.user.id)
 
-
-def _save_time_entries(time_entries, referenced_users_ids):
+def _save_time_entries(time_entries):
     """
     Save issue time entries to export dictionary.
 
     :param time_entries: Issue time entries
-    :param referenced_users_ids: Set of ID's of referenced users
-                                 found so far in the issue resource set
     """
     for time_entry in time_entries:
-        referenced_users_ids.add(time_entry.user.id)
-
         # TODO Set value in the export dictionary
         click.echo("Time entry: {}".format(time_entry))
 
@@ -987,44 +944,6 @@ def _get_resource_mapping(resource, resource_value_mappings,
                  redmine_resource_value)] = jira_resource_value
 
     return jira_resource_type, jira_resource_value
-
-
-def _list_unmapped_referenced_users(users, referenced_users_ids):
-    """
-    Print in a table fashion all the users not explicitly mapped to specific
-    Jira users, via the REDMINE_USER_JIRA_USER_MAPPINGS setting.
-    The purpose is to warn the final user to create them in the target Jira
-    instance before importing the issues.
-
-    :param users: All Redmine users
-    :param referenced_users_ids: ID's of Redmine users referenced
-                                 in issues being exported
-    """
-    # Retrieve all the Redmine users referenced in the issues being
-    # exported, excluding the ones that have been explicitly mapped
-    # to Jira users.
-    # The purpose of this list is to warn the final user to check their
-    # existence in the target Jira instance: if the final user willingly
-    # mapped a Redmine user to a Jira one obviously we need to exclude
-    # it from the list.
-    unmapped_referenced_users = \
-        [v for k, v in users.items()
-         if k in referenced_users_ids and
-            v.login not in config.REDMINE_USER_JIRA_USER_MAPPINGS]
-
-    if unmapped_referenced_users:
-        click.echo("Loading users referenced in the exported issues...")
-        click.echo()
-
-        _list_resources(unmapped_referenced_users,
-                        sort_key='login',
-                        exclude_attrs=('id', 'created_on', 'last_login_on'))
-
-        click.echo()
-        click.echo("No static mappings have been defined for them via the "
-                   "REDMINE_USER_JIRA_USER_MAPPINGS setting.")
-        click.echo("Ensure the above users already exist in your "
-                   "Jira instance before starting the import.")
 
 
 @main.group('list')
