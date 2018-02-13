@@ -124,58 +124,7 @@ def export_issues(output, query_string):
     click.echo("{:d} issue{} found!"
                .format(len(issues), "s" if len(issues) > 1 else ""))
 
-    # Get all Redmine users, groups, projects, trackers, issue statuses,
-    # issue priorities, issue custom fields and store them by ID
-
-    users = {user.id: user for user in chain(redmine.user.all(),
-                                             redmine.user.filter(status=3))}
-
-    groups = None
-
-    if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS:
-        groups = {group.id: group for group in redmine.group.all()}
-
-    projects = {project.id: project
-                for project in redmine.project.all(include='issue_categories')}
-    trackers = {tracker.id: tracker for tracker in redmine.tracker.all()}
-    issue_statuses = {issue_status.id: issue_status
-                      for issue_status in redmine.issue_status.all()}
-    issue_priorities = {
-        issue_priority.id: issue_priority
-        for issue_priority in redmine.enumeration
-                                     .filter(resource='issue_priorities')}
-
-    issue_custom_fields = \
-        {cf.id: cf for cf in redmine.custom_field.all()
-         if cf.customized_type == 'issue'}
-
-    # Get all Redmine issue categories and versions
-    # and store them by project ID and, respectively,
-    # by issue category ID and version ID
-
-    issue_categories = {
-        project.id: {
-            issue_category.id: issue_category
-            for issue_category in project.issue_categories
-        }
-        for project in projects.values()
-    }
-
-    # To build versions dictionary on a per project basis
-    # we need to ignore 403 errors for projects where
-    # no versions have been defined yet.
-    versions = dict()
-
-    for project in projects.values():
-        versions[project.id] = dict()
-
-        with suppress(ForbiddenError):
-            for version in project.versions:
-                versions[project.id][version.id] = version
-
-    _export_issues(issues, users, groups, projects, trackers,
-                   issue_statuses, issue_priorities, issue_custom_fields,
-                   issue_categories, versions)
+    _export_issues(issues)
 
     click.echo("Issues exported in '{}'!".format(output.name))
     click.echo()
@@ -245,9 +194,7 @@ def _get_all_issues():
     return redmine.issue.all()
 
 
-def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
-                   issue_priorities, issue_custom_fields, issue_categories,
-                   versions):
+def _export_issues(issues):
     """
     Export issues and their relations to a JSON file which structure is
     compatible with the JIRA Importers plugin (JIM).
@@ -282,17 +229,56 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
     can only be found in the "assignee" field.
 
     :param issues: Issues to export
-    :param users: All Redmine users
-    :param groups: All Redmine groups
-    :param projects: All Redmine projects
-    :param trackers: All Redmine trackers
-    :param issue_statuses: All Redmine issue statuses
-    :param issue_priorities: All Redmine issue priorities
-    :param issue_custom_fields: All Redmine issue custom fields
-    :param issue_categories: All Redmine issue categories
-                             on a per-project basis
-    :param versions: All Redmine versions on a per-project basis
     """
+    # Get all Redmine users, groups, projects, trackers, issue statuses,
+    # issue priorities, issue custom fields and store them by ID
+
+    users = {user.id: user for user in chain(redmine.user.all(),
+                                             redmine.user.filter(status=3))}
+
+    groups = None
+
+    if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS:
+        groups = {group.id: group for group in redmine.group.all()}
+
+    projects = {project.id: project
+                for project in redmine.project.all(include='issue_categories')}
+    trackers = {tracker.id: tracker for tracker in redmine.tracker.all()}
+    issue_statuses = {issue_status.id: issue_status
+                      for issue_status in redmine.issue_status.all()}
+    issue_priorities = {
+        issue_priority.id: issue_priority
+        for issue_priority in redmine.enumeration
+                                     .filter(resource='issue_priorities')}
+
+    issue_custom_fields = \
+        {cf.id: cf for cf in redmine.custom_field.all()
+         if cf.customized_type == 'issue'}
+
+    # Get all Redmine issue categories and versions
+    # and store them by project ID and, respectively,
+    # by issue category ID and version ID
+
+    issue_categories = {
+        project.id: {
+            issue_category.id: issue_category
+            for issue_category in project.issue_categories
+        }
+        for project in projects.values()
+    }
+
+    # To build versions dictionary on a per project basis
+    # we need to ignore 403 errors for projects where
+    # no versions have been defined yet.
+    versions = dict()
+
+    for project in projects.values():
+        versions[project.id] = dict()
+
+        with suppress(ForbiddenError):
+            for version in project.versions:
+                versions[project.id][version.id] = version
+
     issues_export = dict()
     resource_value_mappings = dict()
 
