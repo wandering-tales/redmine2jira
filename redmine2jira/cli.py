@@ -5,7 +5,9 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from abc import ABCMeta
 from builtins import str
+from collections import namedtuple
 
 try:
     from contextlib import suppress
@@ -33,21 +35,270 @@ from redmine2jira import config
 from redmine2jira.utils.text import text2confluence_wiki
 
 
+# Entities descriptors
+ResourceKey = namedtuple('ResourceKey', ['id', 'key'])
+FakeResourceInstance = namedtuple('FakeResourceInstance',
+                                  ['id', 'name', 'value'])
+ResourceTypeMapping = namedtuple('ResourceTypeMapping', ['redmine', 'jira'])
+FieldMapping = namedtuple('FieldMapping', ['redmine', 'jira'])
+
+
+##################
+# Resource types #
+##################
+
+class Field(object):
+    def __init__(self, key, name, identifying=False, related_resource=None):
+        self.key = key
+        self.name = name
+        self.identifying = identifying
+        self.related_resource = related_resource
+        self.is_relation = False if related_resource is None else True
+
+
+class ResourceType(object):
+    __metaclass__ = ABCMeta
+
+    @classmethod
+    def get_related_fields(cls):
+        return (field for field in cls.__dict__
+                if isinstance(getattr(cls, field), Field) and
+                getattr(cls, field).is_relation)
+
+    @classmethod
+    def get_identifying_field(cls):
+        return next((field for field in cls.__dict__
+                     if isinstance(getattr(cls, field), Field) and
+                     getattr(cls, field).identifying), None)
+
+
+# Redmine resource types
+
+class RedmineUser(ResourceType):
+    login = Field('login', 'Login', identifying=True)
+
+
+class RedmineGroup(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class RedmineProject(ResourceType):
+    identifier = Field('identifier', 'Identifier', identifying=True)
+
+
+class RedmineTracker(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class RedmineIssueStatus(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class RedmineIssuePriority(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class RedmineIssueCategory(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class RedmineCustomField(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class RedmineVersion(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class RedmineIssue(ResourceType):
+    project = Field('project', 'Project',
+                    related_resource=RedmineProject)
+    tracker = Field('tracker', 'Tracker',
+                    related_resource=RedmineTracker)
+    status = Field('status', 'Status',
+                   related_resource=RedmineIssueStatus)
+    priority = Field('priority', 'Priority',
+                     related_resource=RedmineIssuePriority)
+    author = Field('author', 'Author',
+                   related_resource=RedmineUser)
+    assigned_to = Field('assigned_to', 'Assignee',
+                        related_resource=RedmineUser)
+    category = Field('category', 'Category',
+                     related_resource=RedmineIssueCategory)
+    fixed_version = Field('fixed_version', 'Target version',
+                          related_resource=RedmineVersion)
+    subject = Field('subject', 'Subject')
+    description = Field('description', 'Description')
+    created_on = Field('created_on', 'Created on')
+    updated_on = Field('updated_on', 'Updated on')
+    start_date = Field('start_date', 'Start date')
+    due_date = Field('due_date', 'Due date')
+    done_ratio = Field('done_ratio', 'Done %')
+    estimated_hours = Field('estimated_hours', 'Estimated time')
+
+
+# Jira resource types
+
+class JiraUser(ResourceType):
+    username = Field('username', 'Username', identifying=True)
+
+
+class JiraProject(ResourceType):
+    key = Field('key', 'Key', identifying=True)
+
+
+class JiraProjectComponent(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class JiraIssueType(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class JiraIssueStatus(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class JiraIssuePriority(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class JiraLabel(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class JiraCustomField(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class JiraVersion(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class JiraIssue(ResourceType):
+    project = Field('project', 'Project',
+                    related_resource=JiraProject)
+    issuetype = Field('issuetype', 'Issue Type',
+                      related_resource=JiraIssueType)
+    status = Field('status', 'Status',
+                   related_resource=JiraIssueStatus)
+    priority = Field('priority', 'Priority',
+                     related_resource=JiraIssuePriority)
+    creator = Field('creator', 'Creator',
+                    related_resource=JiraUser)
+    assignee = Field('assignee', 'Assignee',
+                     related_resource=JiraUser)
+    components = Field('components', 'Component/s"',
+                       related_resource=JiraProjectComponent)
+    labels = Field('labels', 'Labels',
+                   related_resource=JiraLabel)
+    summary = Field('summary', 'Summary')
+    description = Field('description', 'Description')
+    created = Field('created', 'Created')
+    updated = Field('updated', 'Updated')
+    timeoriginalestimate = Field('timeoriginalestimate', 'Original Estimate')
+
+
+##########################
+# Resource Type Mappings #
+##########################
+
+_user_rtp = \
+    ResourceTypeMapping(RedmineUser, JiraUser)
+_group_user_rtp = \
+    ResourceTypeMapping(RedmineGroup, JiraUser)
+_project_rtp = \
+    ResourceTypeMapping(RedmineProject, JiraProject)
+_tracker_issue_type_rtp = \
+    ResourceTypeMapping(RedmineTracker, JiraIssueType)
+_issue_status_rtp = \
+    ResourceTypeMapping(RedmineIssueStatus, JiraIssueStatus)
+_issue_priority_rtp = \
+    ResourceTypeMapping(RedmineIssuePriority, JiraIssuePriority)
+_issue_category_component_rtp = \
+    ResourceTypeMapping(RedmineIssueCategory, JiraProjectComponent)
+_issue_category_label_rtp = \
+    ResourceTypeMapping(RedmineIssueCategory, JiraLabel)
+_version_rtp = \
+    ResourceTypeMapping(RedmineVersion, JiraVersion)
+_custom_field_rtp = \
+    ResourceTypeMapping(RedmineCustomField, JiraCustomField)
+
+ALL_RESOURCE_TYPE_MAPPINGS = (
+    _user_rtp, _group_user_rtp, _project_rtp, _tracker_issue_type_rtp,
+    _issue_status_rtp, _issue_priority_rtp, _issue_category_component_rtp,
+    _issue_category_label_rtp, _version_rtp, _custom_field_rtp
+)
+
+RESOURCE_TYPE_MAPPINGS_BY_PROJECT = (
+    _issue_category_component_rtp, _issue_category_label_rtp
+)
+
+
+##################
+# Field Mappings #
+##################
+
 # Redmine and Jira resource type identifying field mappings
 #
 # NOTE: A Redmine resource type may corresponds
 #       to one or more Jira resource types.
 #
 RESOURCE_TYPE_IDENTIFYING_FIELD_MAPPINGS = {
-    ('user', 'user'): ('login', 'username'),
-    ('group', 'user'): ('name', 'username'),
-    ('project', 'project'): ('identifier', 'key'),
-    ('tracker', 'issue_type'): ('name', 'name'),
-    ('issue_status', 'issue_status'): ('name', 'name'),
-    ('issue_priority', 'issue_priority'): ('name', 'name'),
-    ('custom_field', 'custom_field'): ('name', 'name'),
-    ('issue_category', 'component'): ('name', 'name'),
-    ('issue_category', 'label'): ('name', 'name')
+    _user_rtp:
+        FieldMapping(RedmineUser.login, JiraUser.username),
+    _group_user_rtp:
+        FieldMapping(RedmineGroup.name, JiraUser.username),
+    _project_rtp:
+        FieldMapping(RedmineProject.identifier, JiraProject.key),
+    _tracker_issue_type_rtp:
+        FieldMapping(RedmineTracker.name, JiraIssueType.name),
+    _issue_status_rtp:
+        FieldMapping(RedmineIssueStatus.name, JiraIssueStatus.name),
+    _issue_priority_rtp:
+        FieldMapping(RedmineIssuePriority.name, JiraIssuePriority.name),
+    _issue_category_component_rtp:
+        FieldMapping(RedmineIssueCategory.name, JiraProjectComponent.name),
+    _issue_category_label_rtp:
+        FieldMapping(RedmineIssueCategory.name, JiraLabel.name),
+    _version_rtp:
+        FieldMapping(RedmineVersion.name, JiraVersion.name),
+    _custom_field_rtp:
+        FieldMapping(RedmineCustomField.name, JiraCustomField.name)
+}
+
+# Redmine and Jira issue field definitions mappings
+#
+# NOTE: A Redmine field may be mapped to one or more Jira fields
+#       with respect to several issue related resource type mappings.
+#
+ISSUE_FIELD_MAPPINGS = {
+    (RedmineIssue.project, _project_rtp):
+        JiraIssue.project,
+    (RedmineIssue.tracker, _tracker_issue_type_rtp):
+        JiraIssue.issuetype,
+    (RedmineIssue.status, _issue_status_rtp):
+        JiraIssue.status,
+    (RedmineIssue.priority, _issue_priority_rtp):
+        JiraIssue.priority,
+    (RedmineIssue.author, _user_rtp):
+        JiraIssue.creator,
+    (RedmineIssue.assigned_to, _user_rtp):
+        JiraIssue.assignee,
+    (RedmineIssue.assigned_to, _group_user_rtp):
+        JiraIssue.assignee,
+    (RedmineIssue.category, _issue_category_component_rtp):
+        JiraIssue.components,
+    (RedmineIssue.category, _issue_category_label_rtp):
+        JiraIssue.labels,
+    RedmineIssue.subject: JiraIssue.summary,
+    RedmineIssue.description: JiraIssue.description,
+    RedmineIssue.created_on: JiraIssue.created,
+    RedmineIssue.updated_on: JiraIssue.updated,
+    RedmineIssue.start_date: None,
+    RedmineIssue.due_date: None,
+    RedmineIssue.done_ratio: None,
+    RedmineIssue.estimated_hours: JiraIssue.timeoriginalestimate
 }
 
 # Redmine and Jira issue custom field type mappings.
@@ -91,6 +342,11 @@ ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS = {
                 'multiple': 'com.atlassian.jira.plugin.system.'
                             'customfieldtypes:multiversion'}
 }
+
+
+##################
+# Static strings #
+##################
 
 MISSING_RESOURCE_MAPPINGS_MESSAGE = "Resource value mappings definition"
 MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX = " -> "
@@ -468,7 +724,7 @@ def _save_priority(priority, issue_priorities, projects,
     priority_type_mapping, priority_value_mapping = \
         _get_resource_mapping(issue_priorities[priority.id], projects,
                               resource_value_mappings,
-                              resource_type="issue_priority")
+                              resource_type=RedmineIssuePriority)
 
     issue_export['priority'] = priority_value_mapping
 
@@ -560,14 +816,14 @@ def _save_category(category, project_id, issue_categories, projects,
                               projects, resource_value_mappings,
                               project_id=project_id)
 
-    if category_type_mapping == 'component':
+    if category_type_mapping == JiraProjectComponent:
         # Add component to parent project export dictionary
         project_export.setdefault('components', []) \
                       .append(category_value_mapping)
         # Add component to issue export dictionary
         issue_export.setdefault('components', []) \
                     .append(category_value_mapping)
-    elif category_type_mapping == 'label':
+    elif category_type_mapping == JiraLabel:
         # Add label to issue export dictionary
         issue_export.setdefault('labels', []) \
                     .append(category_value_mapping)
@@ -825,19 +1081,24 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
-    :param resource_type: Redmine resource type string. If not provided,
-                          the default, the Redmine resource type is derived
-                          from the resource instance class name.
+    :param resource_type: Internal Redmine resource type class.
+                          If not provided the Redmine resource type class is
+                          dynamically derived from the RedmineLib resource
+                          instance class name.
     :param project_id: ID of the project the resource value is bound to,
                        if any.
     :return: The Jira mapped type and value for the resource instance
     """
-    # Guess Redmine resource type by class name
+    # Guess Redmine resource type class
+    # by RedmineLib resource instance class name
     # unless explicitly specified
     redmine_resource_type = resource_type
 
     if not redmine_resource_type:
-        redmine_resource_type = underscore(resource.__class__.__name__)
+        redmine_resource_type = eval('Redmine' + resource.__class__.__name__)
+
+    humanized_redmine_resource_type = \
+        humanize(underscore(redmine_resource_type.__name__))
 
     redmine_resource_value = None
     jira_resource_type = None
@@ -845,20 +1106,20 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
     field_mapping = None
 
     jira_resource_type_field_mappings = \
-        {k[1]: v for k, v in RESOURCE_TYPE_IDENTIFYING_FIELD_MAPPINGS.items()
-         if k[0] == redmine_resource_type}
+        {k.jira: v for k, v in RESOURCE_TYPE_IDENTIFYING_FIELD_MAPPINGS.items()
+         if k.redmine == redmine_resource_type}
 
     # Search for a statically user-defined value mapping
     for jira_resource_type, field_mapping in \
             jira_resource_type_field_mappings.items():
         # Dynamically compose resource type mapping setting name
         resource_type_mapping_setting_name = \
-            'REDMINE_{}_JIRA_{}_MAPPINGS'.format(
-                redmine_resource_type.upper(),
-                jira_resource_type.upper())
+            '{}_{}_MAPPINGS'.format(
+                underscore(redmine_resource_type.__name__).upper(),
+                underscore(jira_resource_type.__name__).upper())
 
         # Get the Redmine resource value
-        redmine_resource_value = getattr(resource, field_mapping[0])
+        redmine_resource_value = getattr(resource, field_mapping.redmine.key)
 
         # Try to get the Jira resource value from mappings
         # statically defined in configuration settings
@@ -885,7 +1146,8 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
         for jira_resource_type, field_mapping \
                 in jira_resource_type_field_mappings.items():
             # Get the Redmine resource value
-            redmine_resource_value = getattr(resource, field_mapping[0])
+            redmine_resource_value = getattr(resource,
+                                             field_mapping.redmine.key)
 
             # Try to get the Jira resource value from mappings
             # dynamically defined at runtime
@@ -920,12 +1182,12 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
         if len(jira_resource_type_field_mappings.keys()) > 1:
             # ...prompt user to choose one
             click.echo(
-                "Missing value mapping for Redmine {} '{}'."
-                .format(humanize(redmine_resource_type).lower(),
+                "Missing value mapping for {} '{}'."
+                .format(humanized_redmine_resource_type,
                         redmine_resource_value))
-            click.echo("A Redmine '{}' can be mapped with one of the "
+            click.echo("A {} can be mapped with one of the "
                        "following Jira resource types:"
-                       .format(humanize(redmine_resource_type)))
+                       .format(humanized_redmine_resource_type))
             click.echo()
 
             static_jira_resource_type_choices = \
@@ -933,7 +1195,11 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
                  for i, jrt in enumerate(jira_resource_type_field_mappings)}
 
             for k, v in static_jira_resource_type_choices.items():
-                click.echo("{:d}) {}".format(k, humanize(v)))
+                # Strip 'Jira' prefix from class name
+                humanized_jira_resource_type = \
+                    humanize(underscore(v.__name__[len('Jira'):]))
+
+                click.echo("{:d}) {}".format(k, humanized_jira_resource_type))
 
             click.echo()
 
@@ -946,13 +1212,16 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
 
         click.echo()
 
+        humanized_jira_resource_type = \
+            humanize(underscore(jira_resource_type.__name__))
+
         jira_resource_value = click.prompt(
-            "[Redmine {} {}{}Jira {} {}] {}"
-            .format(humanize(redmine_resource_type),
-                    field_mapping[0],
+            "[{} {}{}{} {}] {}"
+            .format(humanized_redmine_resource_type,
+                    field_mapping.redmine.name.upper(),
                     MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX,
-                    humanize(jira_resource_type),
-                    field_mapping[1],
+                    humanized_jira_resource_type,
+                    field_mapping.jira.name.upper(),
                     redmine_resource_value),
             prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
 
