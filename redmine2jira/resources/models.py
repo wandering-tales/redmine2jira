@@ -2,114 +2,162 @@
 
 """Definitions of internal domain entities models."""
 
+from abc import ABCMeta
 from collections import namedtuple
 
 
-FieldDefinition = namedtuple('FieldDefinition', ['key', 'name'])
+ResourceKey = namedtuple('ResourceKey', ['id', 'key'])
+FakeResourceInstance = namedtuple('FakeResourceInstance',
+                                  ['id', 'name', 'value'])
+
+
+class Field(object):
+    def __init__(self, key, name, identifying=False, related_resource=None):
+        self.key = key
+        self.name = name
+        self.identifying = identifying
+        self.related_resource = related_resource
+        self.is_relation = False if related_resource is None else True
 
 
 class ResourceType(object):
-    pass
+    __metaclass__ = ABCMeta
+
+    @classmethod
+    def get_related_fields(cls):
+        return (field for field in cls.__dict__
+                if isinstance(getattr(cls, field), Field) and
+                getattr(cls, field).is_relation)
+
+    @classmethod
+    def get_identifying_field(cls):
+        return next((field for field in cls.__dict__
+                     if isinstance(getattr(cls, field), Field) and
+                     getattr(cls, field).identifying), None)
 
 
 # Redmine resource types
 
 class RedmineUser(ResourceType):
-    login = FieldDefinition('login', 'Login')
+    login = Field('login', 'Login', identifying=True)
 
 
 class RedmineGroup(ResourceType):
-    name = FieldDefinition('name', 'Name')
+    name = Field('name', 'Name', identifying=True)
 
 
 class RedmineProject(ResourceType):
-    identifier = FieldDefinition('identifier', 'Identifier')
+    identifier = Field('identifier', 'Identifier', identifying=True)
 
 
 class RedmineTracker(ResourceType):
-    name = FieldDefinition('name', 'Name')
-
-
-class RedmineIssue(ResourceType):
-    project = FieldDefinition('project', 'Project')
-    tracker = FieldDefinition('tracker', 'Tracker')
-    status = FieldDefinition('status', 'Status')
-    priority = FieldDefinition('priority', 'Priority')
-    author = FieldDefinition('author', 'Author')
-    assigned_to = FieldDefinition('assigned_to', 'Assignee')
-    category = FieldDefinition('category', 'Category')
-    subject = FieldDefinition('subject', 'Subject')
-    description = FieldDefinition('description', 'Description')
-    created = FieldDefinition('created_on', 'Created on')
-    updated = FieldDefinition('updated_on', 'Updated on')
-    start_date = FieldDefinition('start_date', 'Start date')
-    due_date = FieldDefinition('due_date', 'Due date')
-    done_ratio = FieldDefinition('done_ratio', 'Done %')
-    estimated_hours = FieldDefinition('estimated_hours', 'Estimated time')
+    name = Field('name', 'Name', identifying=True)
 
 
 class RedmineIssueStatus(ResourceType):
-    name = FieldDefinition('name', 'Name')
+    name = Field('name', 'Name', identifying=True)
 
 
 class RedmineIssuePriority(ResourceType):
-    name = FieldDefinition('name', 'Name')
+    name = Field('name', 'Name', identifying=True)
 
 
 class RedmineIssueCategory(ResourceType):
-    name = FieldDefinition('name', 'Name')
+    name = Field('name', 'Name', identifying=True)
 
 
 class RedmineCustomField(ResourceType):
-    name = FieldDefinition('name', 'Name')
+    name = Field('name', 'Name', identifying=True)
+
+
+class RedmineVersion(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class RedmineIssue(ResourceType):
+    project = Field('project', 'Project',
+                    related_resource=RedmineProject)
+    tracker = Field('tracker', 'Tracker',
+                    related_resource=RedmineTracker)
+    status = Field('status', 'Status',
+                   related_resource=RedmineIssueStatus)
+    priority = Field('priority', 'Priority',
+                     related_resource=RedmineIssuePriority)
+    author = Field('author', 'Author',
+                   related_resource=RedmineUser)
+    assigned_to = Field('assigned_to', 'Assignee',
+                        related_resource=RedmineUser)
+    category = Field('category', 'Category',
+                     related_resource=RedmineIssueCategory)
+    fixed_version = Field('fixed_version', 'Target version',
+                          related_resource=RedmineVersion)
+    subject = Field('subject', 'Subject')
+    description = Field('description', 'Description')
+    created_on = Field('created_on', 'Created on')
+    updated_on = Field('updated_on', 'Updated on')
+    start_date = Field('start_date', 'Start date')
+    due_date = Field('due_date', 'Due date')
+    done_ratio = Field('done_ratio', 'Done %')
+    estimated_hours = Field('estimated_hours', 'Estimated time')
 
 
 # Jira resource types
 
 class JiraUser(ResourceType):
-    username = FieldDefinition('username', 'Username')
+    username = Field('username', 'Username', identifying=True)
 
 
 class JiraProject(ResourceType):
-    key = FieldDefinition('key', 'Key')
+    key = Field('key', 'Key', identifying=True)
 
 
 class JiraProjectComponent(ResourceType):
-    name = FieldDefinition('name', 'Name')
-
-
-class JiraIssue(ResourceType):
-    project = FieldDefinition('project', 'Project')
-    issuetype = FieldDefinition('issuetype', 'Issue Type')
-    status = FieldDefinition('status', 'Status')
-    priority = FieldDefinition('priority', 'Priority')
-    creator = FieldDefinition('creator', 'Creator')
-    assignee = FieldDefinition('assignee', 'Assignee')
-    components = FieldDefinition('components', 'Component/s"')
-    labels = FieldDefinition('labels', 'Labels')
-    summary = FieldDefinition('summary', 'Summary')
-    description = FieldDefinition('description', 'Description')
-    created = FieldDefinition('created', 'Created')
-    updated = FieldDefinition('updated', 'Updated')
-    timeoriginalestimate = FieldDefinition('timeoriginalestimate',
-                                           'Original Estimate')
+    name = Field('name', 'Name', identifying=True)
 
 
 class JiraIssueType(ResourceType):
-    name = FieldDefinition('name', 'Name')
+    name = Field('name', 'Name', identifying=True)
 
 
 class JiraIssueStatus(ResourceType):
-    name = FieldDefinition('name', 'Name')
+    name = Field('name', 'Name', identifying=True)
 
 
 class JiraIssuePriority(ResourceType):
-    name = FieldDefinition('name', 'Name')
+    name = Field('name', 'Name', identifying=True)
 
 
 class JiraLabel(ResourceType):
-    name = FieldDefinition('name', 'Name')
+    name = Field('name', 'Name', identifying=True)
 
 
 class JiraCustomField(ResourceType):
-    name = FieldDefinition('name', 'Name')
+    name = Field('name', 'Name', identifying=True)
+
+
+class JiraVersion(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class JiraIssue(ResourceType):
+    project = Field('project', 'Project',
+                    related_resource=JiraProject)
+    issuetype = Field('issuetype', 'Issue Type',
+                      related_resource=JiraIssueType)
+    status = Field('status', 'Status',
+                   related_resource=JiraIssueStatus)
+    priority = Field('priority', 'Priority',
+                     related_resource=JiraIssuePriority)
+    creator = Field('creator', 'Creator',
+                    related_resource=JiraUser)
+    assignee = Field('assignee', 'Assignee',
+                     related_resource=JiraUser)
+    components = Field('components', 'Component/s"',
+                       related_resource=JiraProjectComponent)
+    labels = Field('labels', 'Labels',
+                   related_resource=JiraLabel)
+    summary = Field('summary', 'Summary')
+    description = Field('description', 'Description')
+    created = Field('created', 'Created')
+    updated = Field('updated', 'Updated')
+    timeoriginalestimate = Field('timeoriginalestimate', 'Original Estimate')

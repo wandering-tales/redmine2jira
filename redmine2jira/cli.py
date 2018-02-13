@@ -5,9 +5,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from abc import ABCMeta
 from builtins import str
-from collections import namedtuple
 
 try:
     from contextlib import suppress
@@ -32,316 +30,12 @@ from six.moves.urllib.parse import unquote
 from tabulate import tabulate
 
 from redmine2jira import config
+from redmine2jira.resources import models
+from redmine2jira.resources.mappings import (
+    RESOURCE_TYPE_IDENTIFYING_FIELD_MAPPINGS,
+    ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS
+)
 from redmine2jira.utils.text import text2confluence_wiki
-
-
-# Entities descriptors
-ResourceKey = namedtuple('ResourceKey', ['id', 'key'])
-FakeResourceInstance = namedtuple('FakeResourceInstance',
-                                  ['id', 'name', 'value'])
-ResourceTypeMapping = namedtuple('ResourceTypeMapping', ['redmine', 'jira'])
-FieldMapping = namedtuple('FieldMapping', ['redmine', 'jira'])
-
-
-##################
-# Resource types #
-##################
-
-class Field(object):
-    def __init__(self, key, name, identifying=False, related_resource=None):
-        self.key = key
-        self.name = name
-        self.identifying = identifying
-        self.related_resource = related_resource
-        self.is_relation = False if related_resource is None else True
-
-
-class ResourceType(object):
-    __metaclass__ = ABCMeta
-
-    @classmethod
-    def get_related_fields(cls):
-        return (field for field in cls.__dict__
-                if isinstance(getattr(cls, field), Field) and
-                getattr(cls, field).is_relation)
-
-    @classmethod
-    def get_identifying_field(cls):
-        return next((field for field in cls.__dict__
-                     if isinstance(getattr(cls, field), Field) and
-                     getattr(cls, field).identifying), None)
-
-
-# Redmine resource types
-
-class RedmineUser(ResourceType):
-    login = Field('login', 'Login', identifying=True)
-
-
-class RedmineGroup(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class RedmineProject(ResourceType):
-    identifier = Field('identifier', 'Identifier', identifying=True)
-
-
-class RedmineTracker(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class RedmineIssueStatus(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class RedmineIssuePriority(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class RedmineIssueCategory(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class RedmineCustomField(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class RedmineVersion(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class RedmineIssue(ResourceType):
-    project = Field('project', 'Project',
-                    related_resource=RedmineProject)
-    tracker = Field('tracker', 'Tracker',
-                    related_resource=RedmineTracker)
-    status = Field('status', 'Status',
-                   related_resource=RedmineIssueStatus)
-    priority = Field('priority', 'Priority',
-                     related_resource=RedmineIssuePriority)
-    author = Field('author', 'Author',
-                   related_resource=RedmineUser)
-    assigned_to = Field('assigned_to', 'Assignee',
-                        related_resource=RedmineUser)
-    category = Field('category', 'Category',
-                     related_resource=RedmineIssueCategory)
-    fixed_version = Field('fixed_version', 'Target version',
-                          related_resource=RedmineVersion)
-    subject = Field('subject', 'Subject')
-    description = Field('description', 'Description')
-    created_on = Field('created_on', 'Created on')
-    updated_on = Field('updated_on', 'Updated on')
-    start_date = Field('start_date', 'Start date')
-    due_date = Field('due_date', 'Due date')
-    done_ratio = Field('done_ratio', 'Done %')
-    estimated_hours = Field('estimated_hours', 'Estimated time')
-
-
-# Jira resource types
-
-class JiraUser(ResourceType):
-    username = Field('username', 'Username', identifying=True)
-
-
-class JiraProject(ResourceType):
-    key = Field('key', 'Key', identifying=True)
-
-
-class JiraProjectComponent(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class JiraIssueType(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class JiraIssueStatus(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class JiraIssuePriority(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class JiraLabel(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class JiraCustomField(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class JiraVersion(ResourceType):
-    name = Field('name', 'Name', identifying=True)
-
-
-class JiraIssue(ResourceType):
-    project = Field('project', 'Project',
-                    related_resource=JiraProject)
-    issuetype = Field('issuetype', 'Issue Type',
-                      related_resource=JiraIssueType)
-    status = Field('status', 'Status',
-                   related_resource=JiraIssueStatus)
-    priority = Field('priority', 'Priority',
-                     related_resource=JiraIssuePriority)
-    creator = Field('creator', 'Creator',
-                    related_resource=JiraUser)
-    assignee = Field('assignee', 'Assignee',
-                     related_resource=JiraUser)
-    components = Field('components', 'Component/s"',
-                       related_resource=JiraProjectComponent)
-    labels = Field('labels', 'Labels',
-                   related_resource=JiraLabel)
-    summary = Field('summary', 'Summary')
-    description = Field('description', 'Description')
-    created = Field('created', 'Created')
-    updated = Field('updated', 'Updated')
-    timeoriginalestimate = Field('timeoriginalestimate', 'Original Estimate')
-
-
-##########################
-# Resource Type Mappings #
-##########################
-
-_user_rtp = \
-    ResourceTypeMapping(RedmineUser, JiraUser)
-_group_user_rtp = \
-    ResourceTypeMapping(RedmineGroup, JiraUser)
-_project_rtp = \
-    ResourceTypeMapping(RedmineProject, JiraProject)
-_tracker_issue_type_rtp = \
-    ResourceTypeMapping(RedmineTracker, JiraIssueType)
-_issue_status_rtp = \
-    ResourceTypeMapping(RedmineIssueStatus, JiraIssueStatus)
-_issue_priority_rtp = \
-    ResourceTypeMapping(RedmineIssuePriority, JiraIssuePriority)
-_issue_category_component_rtp = \
-    ResourceTypeMapping(RedmineIssueCategory, JiraProjectComponent)
-_issue_category_label_rtp = \
-    ResourceTypeMapping(RedmineIssueCategory, JiraLabel)
-_version_rtp = \
-    ResourceTypeMapping(RedmineVersion, JiraVersion)
-_custom_field_rtp = \
-    ResourceTypeMapping(RedmineCustomField, JiraCustomField)
-
-ALL_RESOURCE_TYPE_MAPPINGS = (
-    _user_rtp, _group_user_rtp, _project_rtp, _tracker_issue_type_rtp,
-    _issue_status_rtp, _issue_priority_rtp, _issue_category_component_rtp,
-    _issue_category_label_rtp, _version_rtp, _custom_field_rtp
-)
-
-RESOURCE_TYPE_MAPPINGS_BY_PROJECT = (
-    _issue_category_component_rtp, _issue_category_label_rtp
-)
-
-
-##################
-# Field Mappings #
-##################
-
-# Redmine and Jira resource type identifying field mappings
-#
-# NOTE: A Redmine resource type may corresponds
-#       to one or more Jira resource types.
-#
-RESOURCE_TYPE_IDENTIFYING_FIELD_MAPPINGS = {
-    _user_rtp:
-        FieldMapping(RedmineUser.login, JiraUser.username),
-    _group_user_rtp:
-        FieldMapping(RedmineGroup.name, JiraUser.username),
-    _project_rtp:
-        FieldMapping(RedmineProject.identifier, JiraProject.key),
-    _tracker_issue_type_rtp:
-        FieldMapping(RedmineTracker.name, JiraIssueType.name),
-    _issue_status_rtp:
-        FieldMapping(RedmineIssueStatus.name, JiraIssueStatus.name),
-    _issue_priority_rtp:
-        FieldMapping(RedmineIssuePriority.name, JiraIssuePriority.name),
-    _issue_category_component_rtp:
-        FieldMapping(RedmineIssueCategory.name, JiraProjectComponent.name),
-    _issue_category_label_rtp:
-        FieldMapping(RedmineIssueCategory.name, JiraLabel.name),
-    _version_rtp:
-        FieldMapping(RedmineVersion.name, JiraVersion.name),
-    _custom_field_rtp:
-        FieldMapping(RedmineCustomField.name, JiraCustomField.name)
-}
-
-# Redmine and Jira issue field definitions mappings
-#
-# NOTE: A Redmine field may be mapped to one or more Jira fields
-#       with respect to several issue related resource type mappings.
-#
-ISSUE_FIELD_MAPPINGS = {
-    (RedmineIssue.project, _project_rtp):
-        JiraIssue.project,
-    (RedmineIssue.tracker, _tracker_issue_type_rtp):
-        JiraIssue.issuetype,
-    (RedmineIssue.status, _issue_status_rtp):
-        JiraIssue.status,
-    (RedmineIssue.priority, _issue_priority_rtp):
-        JiraIssue.priority,
-    (RedmineIssue.author, _user_rtp):
-        JiraIssue.creator,
-    (RedmineIssue.assigned_to, _user_rtp):
-        JiraIssue.assignee,
-    (RedmineIssue.assigned_to, _group_user_rtp):
-        JiraIssue.assignee,
-    (RedmineIssue.category, _issue_category_component_rtp):
-        JiraIssue.components,
-    (RedmineIssue.category, _issue_category_label_rtp):
-        JiraIssue.labels,
-    RedmineIssue.subject: JiraIssue.summary,
-    RedmineIssue.description: JiraIssue.description,
-    RedmineIssue.created_on: JiraIssue.created,
-    RedmineIssue.updated_on: JiraIssue.updated,
-    RedmineIssue.start_date: None,
-    RedmineIssue.due_date: None,
-    RedmineIssue.done_ratio: None,
-    RedmineIssue.estimated_hours: JiraIssue.timeoriginalestimate
-}
-
-# Redmine and Jira issue custom field type mappings.
-# A single Redmine issue custom field type may correspond
-# up to two Jira issue custom field types, respectively
-# if they accept single and multiple values.
-#
-ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS = {
-    # Currently Jira does not support boolean custom fields.
-    # Here's an open suggestion:
-    #
-    # https://jira.atlassian.com/browse/JRACLOUD-4689
-    #
-    # A workaround is to map a Redmine boolean custom fields
-    # with a Jira select custom field having Yes/No as options.
-    'bool': {'single': 'com.atlassian.jira.plugin.system.'
-                       'customfieldtypes:select'},
-
-    'date': {'single': 'com.atlassian.jira.plugin.system.'
-                       'customfieldtypes:datepicker'},
-    'float': {'single': 'com.atlassian.jira.plugin.system.'
-                        'customfieldtypes:float'},
-    'int': {'single': 'com.atlassian.jira.plugin.system.'
-                      'customfieldtypes:float'},
-    'link': {'single': 'com.atlassian.jira.plugin.system.'
-                       'customfieldtypes:url'},
-    'list': {'single': 'com.atlassian.jira.plugin.system.'
-                       'customfieldtypes:select',
-             'multiple': 'com.atlassian.jira.plugin.system.'
-                         'customfieldtypes:multiselect'},
-    'text': {'single': 'com.atlassian.jira.plugin.system.'
-                       'customfieldtypes:textarea'},
-    'string': {'single': 'com.atlassian.jira.plugin.system.'
-                         'customfieldtypes:textfield'},
-    'user': {'single': 'com.atlassian.jira.plugin.system.'
-                       'customfieldtypes:userpicker',
-             'multiple': 'com.atlassian.jira.plugin.system.'
-                         'customfieldtypes:multiuserpicker'},
-    'version': {'single': 'com.atlassian.jira.plugin.system.'
-                          'customfieldtypes:version',
-                'multiple': 'com.atlassian.jira.plugin.system.'
-                            'customfieldtypes:multiversion'}
-}
 
 
 ##################
@@ -724,7 +418,7 @@ def _save_priority(priority, issue_priorities, projects,
     priority_type_mapping, priority_value_mapping = \
         _get_resource_mapping(issue_priorities[priority.id], projects,
                               resource_value_mappings,
-                              resource_type=RedmineIssuePriority)
+                              resource_type=models.RedmineIssuePriority)
 
     issue_export['priority'] = priority_value_mapping
 
@@ -816,14 +510,14 @@ def _save_category(category, project_id, issue_categories, projects,
                               projects, resource_value_mappings,
                               project_id=project_id)
 
-    if category_type_mapping == JiraProjectComponent:
+    if category_type_mapping == models.JiraProjectComponent:
         # Add component to parent project export dictionary
         project_export.setdefault('components', []) \
                       .append(category_value_mapping)
         # Add component to issue export dictionary
         issue_export.setdefault('components', []) \
                     .append(category_value_mapping)
-    elif category_type_mapping == JiraLabel:
+    elif category_type_mapping == models.JiraLabel:
         # Add label to issue export dictionary
         issue_export.setdefault('labels', []) \
                     .append(category_value_mapping)
@@ -1095,7 +789,8 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
     redmine_resource_type = resource_type
 
     if not redmine_resource_type:
-        redmine_resource_type = eval('Redmine' + resource.__class__.__name__)
+        redmine_resource_type = \
+            eval('models.Redmine' + resource.__class__.__name__)
 
     humanized_redmine_resource_type = \
         humanize(underscore(redmine_resource_type.__name__))
