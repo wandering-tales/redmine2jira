@@ -33,11 +33,12 @@ from redmine2jira import config
 from redmine2jira.utils.text import text2confluence_wiki
 
 
-# Redmine and Jira resource type field mappings
+# Redmine and Jira resource type identifying field mappings
 #
 # NOTE: A Redmine resource type may corresponds
 #       to one or more Jira resource types.
-RESOURCE_TYPE_FIELD_MAPPINGS = {
+#
+RESOURCE_TYPE_IDENTIFYING_FIELD_MAPPINGS = {
     ('user', 'user'): ('login', 'username'),
     ('group', 'user'): ('name', 'username'),
     ('project', 'project'): ('identifier', 'key'),
@@ -844,7 +845,7 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
     field_mapping = None
 
     jira_resource_type_field_mappings = \
-        {k[1]: v for k, v in RESOURCE_TYPE_FIELD_MAPPINGS.items()
+        {k[1]: v for k, v in RESOURCE_TYPE_IDENTIFYING_FIELD_MAPPINGS.items()
          if k[0] == redmine_resource_type}
 
     # Search for a statically user-defined value mapping
