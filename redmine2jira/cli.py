@@ -33,7 +33,8 @@ from redmine2jira import config
 from redmine2jira.resources import models
 from redmine2jira.resources.mappings import (
     RESOURCE_TYPE_IDENTIFYING_FIELD_MAPPINGS,
-    ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS
+    ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS,
+    ResourceTypeMapping
 )
 from redmine2jira.utils.text import text2confluence_wiki
 
@@ -306,7 +307,7 @@ def _save_project(project, projects, resource_value_mappings, issues_export):
                                     by the final user
     :param issues_export: Issues export dictionary
     """
-    project_type_mapping, project_value_mapping = \
+    project_resource_type_mapping, project_value_mapping = \
         _get_resource_mapping(projects[project.id], projects,
                               resource_value_mappings)
 
@@ -355,7 +356,7 @@ def _save_author(author, users, projects, resource_value_mappings,
                                     by the final user
     :param issue_export: Single issue export dictionary
     """
-    author_type_mapping, author_value_mapping = \
+    author_resource_type_mapping, author_value_mapping = \
         _get_resource_mapping(users[author.id], projects,
                               resource_value_mappings)
 
@@ -375,7 +376,7 @@ def _save_tracker(tracker, trackers, projects, resource_value_mappings,
                                     by the final user
     :param issue_export: Single issue export dictionary
     """
-    tracker_type_mapping, tracker_value_mapping = \
+    tracker_resource_type_mapping, tracker_value_mapping = \
         _get_resource_mapping(trackers[tracker.id], projects,
                               resource_value_mappings)
 
@@ -395,7 +396,7 @@ def _save_status(status, issue_statuses, projects, resource_value_mappings,
                                     by the final user
     :param issue_export: Single issue export dictionary
     """
-    status_type_mapping, status_value_mapping = \
+    status_resource_type_mapping, status_value_mapping = \
         _get_resource_mapping(issue_statuses[status.id], projects,
                               resource_value_mappings)
 
@@ -415,7 +416,7 @@ def _save_priority(priority, issue_priorities, projects,
                                     by the final user
     :param issue_export: Single issue export dictionary
     """
-    priority_type_mapping, priority_value_mapping = \
+    priority_resource_type_mapping, priority_value_mapping = \
         _get_resource_mapping(issue_priorities[priority.id], projects,
                               resource_value_mappings,
                               resource_type=models.RedmineIssuePriority)
@@ -477,12 +478,12 @@ def _save_assigned_to(assigned_to, users, groups, projects,
     """
     # If the assignee is a group...
     if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and assigned_to.id in groups:
-        assignee_type_mapping, assignee_value_mapping = \
+        assignee_resource_type_mapping, assignee_value_mapping = \
             _get_resource_mapping(groups[assigned_to.id], projects,
                                   resource_value_mappings)
     # ...else if the assignee is a user...
     else:
-        assignee_type_mapping, assignee_value_mapping = \
+        assignee_resource_type_mapping, assignee_value_mapping = \
             _get_resource_mapping(users[assigned_to.id], projects,
                                   resource_value_mappings)
 
@@ -505,19 +506,19 @@ def _save_category(category, project_id, issue_categories, projects,
     :param project_export: Parent project export dictionary
     :param issue_export: Single issue export dictionary
     """
-    category_type_mapping, category_value_mapping = \
+    category_resource_type_mapping, category_value_mapping = \
         _get_resource_mapping(issue_categories[project_id][category.id],
                               projects, resource_value_mappings,
                               project_id=project_id)
 
-    if category_type_mapping == models.JiraProjectComponent:
+    if category_resource_type_mapping.jira == models.JiraProjectComponent:
         # Add component to parent project export dictionary
         project_export.setdefault('components', []) \
                       .append(category_value_mapping)
         # Add component to issue export dictionary
         issue_export.setdefault('components', []) \
                     .append(category_value_mapping)
-    elif category_type_mapping == models.JiraLabel:
+    elif category_resource_type_mapping.jira == models.JiraLabel:
         # Add label to issue export dictionary
         issue_export.setdefault('labels', []) \
                     .append(category_value_mapping)
@@ -651,7 +652,7 @@ def _save_watchers(watchers, users, projects, resource_value_mappings,
     :param issue_export: Single issue export dictionary
     """
     for watcher in watchers:
-        user_type_mapping, user_value_mapping = \
+        user_resource_type_mapping, user_value_mapping = \
             _get_resource_mapping(users[watcher.id], projects,
                                   resource_value_mappings)
 
@@ -673,7 +674,7 @@ def _save_attachments(attachments, users, projects, resource_value_mappings,
     :param issue_export: Single issue export dictionary
     """
     for attachment in attachments:
-        user_type_mapping, user_value_mapping = \
+        user_resource_type_mapping, user_value_mapping = \
             _get_resource_mapping(users[attachment.author.id], projects,
                                   resource_value_mappings)
 
@@ -725,7 +726,7 @@ def _save_journals(journals, users, projects, resource_value_mappings,
     :param issue_export: Single issue export dictionary
     """
     for journal in journals:
-        user_type_mapping, user_value_mapping = \
+        user_resource_type_mapping, user_value_mapping = \
             _get_resource_mapping(users[journal.user.id], projects,
                                   resource_value_mappings)
 
@@ -765,10 +766,22 @@ def _save_time_entries(time_entries):
 def _get_resource_mapping(resource, projects, resource_value_mappings,
                           resource_type=None, project_id=None):
     """
-    Find a Jira mapping for both type and value of a Redmine resource instance.
-    The function attempt to find a user-defined mapping in the configuration
-    settings, falling back to dynamically define new mappings prompting the
-    user at runtime.
+    For each jira resource type mapped by the type of the given Redmine
+    resource instance, this method finds a jira resource value.
+
+    By default the type of the Redmine resource instance is guessed from
+    its class, but can be explicitly defined via the ``resource_type``
+    parameter.
+
+    For each resource type mapping the method attempts to find a user-defined
+    value mapping in the configuration settings first, falling back to value
+    mappings dynamically defined by the final user at runtime.
+
+    New dynamic value mappings are defined when no value mapping is found
+    among both static and dynamic value mappings. In that case the final user
+    is prompted to define one at runtime; furthermore, he may also be
+    prompted to choose a jira resource type mapping, if the current Redmine
+    resource type is mapped to more than one jira resource type.
 
     :param resource: Resource instance
     :param projects: All Redmine projects
@@ -781,7 +794,8 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
                           instance class name.
     :param project_id: ID of the project the resource value is bound to,
                        if any.
-    :return: The Jira mapped type and value for the resource instance
+    :return: A tuple containing both resource type mapping
+             and jira resource value
     """
     # Guess Redmine resource type class
     # by RedmineLib resource instance class name
@@ -795,8 +809,9 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
     humanized_redmine_resource_type = \
         humanize(underscore(redmine_resource_type.__name__))
 
-    redmine_resource_value = None
     jira_resource_type = None
+    resource_type_mapping = None
+    redmine_resource_value = None
     jira_resource_value = None
     field_mapping = None
 
@@ -807,6 +822,10 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
     # Search for a statically user-defined value mapping
     for jira_resource_type, field_mapping in \
             jira_resource_type_field_mappings.items():
+        # Build ResourceTypeMapping object
+        resource_type_mapping = ResourceTypeMapping(redmine_resource_type,
+                                                    jira_resource_type)
+
         # Dynamically compose resource type mapping setting name
         resource_type_mapping_setting_name = \
             '{}_{}_MAPPINGS'.format(
@@ -840,6 +859,10 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
         # Search for a dynamically user-defined value mapping
         for jira_resource_type, field_mapping \
                 in jira_resource_type_field_mappings.items():
+            # Build ResourceTypeMapping object
+            resource_type_mapping = ResourceTypeMapping(redmine_resource_type,
+                                                        jira_resource_type)
+
             # Get the Redmine resource value
             redmine_resource_value = getattr(resource,
                                              field_mapping.redmine.key)
@@ -920,6 +943,9 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
                     redmine_resource_value),
             prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
 
+        resource_type_mapping = ResourceTypeMapping(redmine_resource_type,
+                                                    jira_resource_type)
+
         if project_id is None:
             resource_value_mappings[
                 (redmine_resource_type,
@@ -932,7 +958,7 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
                  project_id,
                  redmine_resource_value)] = jira_resource_value
 
-    return jira_resource_type, jira_resource_value
+    return resource_type_mapping, jira_resource_value
 
 
 @main.group('list')
