@@ -609,21 +609,7 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
     :param issue_export: Single issue export dictionary
     """
     for custom_field in custom_fields:
-        custom_field_dict = {
-            'fieldName': _get_resource_mapping(custom_field, projects,
-                                               resource_value_mappings)[1]
-        }
-
         custom_field_def = issue_custom_fields[custom_field.id]
-
-        if getattr(custom_field_def, 'multiple', False):
-            custom_field_dict['fieldType'] = \
-                ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS[
-                    custom_field_def.field_format]['multiple']
-        else:
-            custom_field_dict['fieldType'] = \
-                ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS[
-                    custom_field_def.field_format]['single']
 
         redmine_value = custom_field.value
         jira_value = redmine_value
@@ -669,15 +655,16 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                     version_ids = set(map(int, redmine_value))
                     jira_value = [
                         _get_resource_mapping(
-                            version, resource_value_mappings)[1]
+                            version, projects, resource_value_mappings)[1]
                         for version_id, version in versions[project_id].items()
                         if version_id in version_ids
                     ]
                 else:
                     version_id = int(redmine_value)
                     jira_value = \
-                        _get_resource_mapping(versions[project_id][version_id],
-                                              resource_value_mappings)[1]
+                        _get_resource_mapping(
+                            versions[project_id][version_id], projects,
+                            resource_value_mappings)[1]
             elif custom_field_def.field_format in ['link', 'list']:
                 pass
             else:
@@ -685,7 +672,23 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                     "'{}' field format not supported!"
                     .format(custom_field_def.field_format))
 
-        custom_field_dict['value'] = jira_value
+        field_name = \
+            _get_resource_mapping(custom_field, projects,
+                                  resource_value_mappings)[1]
+
+        format_mapping = \
+            ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS[custom_field_def.field_format]
+
+        field_type = \
+            format_mapping['multiple'] \
+            if getattr(custom_field_def, 'multiple', False) \
+            else format_mapping['single']
+
+        custom_field_dict = {
+            'fieldName': field_name,
+            'fieldType': field_type,
+            'value': jira_value
+        }
 
         issue_export.setdefault('customFieldValues', []) \
                     .append(custom_field_dict)
