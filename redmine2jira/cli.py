@@ -781,7 +781,7 @@ def _save_journals(journals, users, projects, resource_value_mappings,
                                   resource_value_mappings)
 
         # If there's a user note in the journal item...
-        if journal.notes:
+        if getattr(journal, 'notes', None):
             # ...append it to Jira issue comments
             comment_body = journal.notes
 
