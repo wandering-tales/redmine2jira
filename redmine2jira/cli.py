@@ -723,25 +723,41 @@ def _save_journals(journals, users, projects, resource_value_mappings,
     :param issue_export: Single issue export dictionary
     """
     for journal in journals:
-        author = _get_resource_mapping(users[journal.user.id], projects,
-                                       resource_value_mappings)
-
         # If there's a user note in the journal item...
         if getattr(journal, 'notes', None):
-            # ...append it to Jira issue comments
-            comment_body = journal.notes
+            _save_journal_notes(journal, users, projects,
+                                resource_value_mappings, issue_export)
 
-            if config.REDMINE_TEXT_FORMATTING != 'none':
-                comment_body = text2confluence_wiki(comment_body)
 
-            comment_dict = {
-                "author": author,
-                "body": comment_body,
-                "created": journal.created_on.isoformat()
-            }
+def _save_journal_notes(journal, users, projects, resource_value_mappings,
+                        issue_export):
+    """
+    Save issue journal notes to export dictionary.
 
-            issue_export.setdefault('comments', []) \
-                        .append(comment_dict)
+    :param journal: Issue journal item
+    :param users: All Redmine users
+    :param projects: All Redmine projects
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    :param issue_export: Single issue export dictionary
+    """
+    author = _get_resource_mapping(users[journal.user.id], projects,
+                                   resource_value_mappings)
+
+    comment_body = journal.notes
+
+    if config.REDMINE_TEXT_FORMATTING != 'none':
+        comment_body = text2confluence_wiki(comment_body)
+
+    comment_dict = {
+        "author": author,
+        "body": comment_body,
+        "created": journal.created_on.isoformat()
+    }
+
+    issue_export.setdefault('comments', []) \
+                .append(comment_dict)
 
 
 def _save_time_entries(time_entries):
