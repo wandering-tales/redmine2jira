@@ -874,15 +874,13 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
             # dynamically defined at runtime
             if project_id is None:
                 jira_resource_value = \
-                    resource_value_mappings.get((redmine_resource_type,
-                                                 jira_resource_type,
-                                                 redmine_resource_value), None)
+                    resource_value_mappings.get((redmine_resource_value,
+                                                 resource_type_mapping), None)
             else:
                 jira_resource_value = \
-                    resource_value_mappings.get((redmine_resource_type,
-                                                 jira_resource_type,
-                                                 project_id,
-                                                 redmine_resource_value), None)
+                    resource_value_mappings.get((project_id,
+                                                 redmine_resource_value,
+                                                 resource_type_mapping), None)
 
             if jira_resource_value is not None:
                 # A Jira resource value mapping has been found. Exit!
@@ -951,15 +949,13 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
 
         if project_id is None:
             resource_value_mappings[
-                (redmine_resource_type,
-                 jira_resource_type,
-                 redmine_resource_value)] = jira_resource_value
+                (redmine_resource_value,
+                 resource_type_mapping)] = jira_resource_value
         else:
             resource_value_mappings[
-                (redmine_resource_type,
-                 jira_resource_type,
-                 project_id,
-                 redmine_resource_value)] = jira_resource_value
+                (project_id,
+                 redmine_resource_value,
+                 resource_type_mapping)] = jira_resource_value
 
     if include_type_mapping:
         return jira_resource_value, resource_type_mapping
