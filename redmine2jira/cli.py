@@ -308,8 +308,8 @@ def _save_project(project, projects, resource_value_mappings, issues_export):
     :param issues_export: Issues export dictionary
     """
     project_value_mapping = \
-        _get_resource_mapping(projects[project.id], projects,
-                              resource_value_mappings)
+        _get_project_mapping(projects[project.id], projects,
+                             resource_value_mappings)
 
     projects = issues_export.setdefault('projects', [])
 
@@ -323,6 +323,20 @@ def _save_project(project, projects, resource_value_mappings, issues_export):
     return project
 
 
+def _get_project_mapping(project, projects, resource_value_mappings):
+    """
+    Get the Jira value mapping for the project field.
+
+    :param project: Issue project
+    :param projects: All Redmine projects
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    :return: Jira value mapping for the project
+    """
+    return _get_resource_mapping(project, projects, resource_value_mappings)
+
+
 def _save_id(issue_id, issue_export):
     """
     Save issue ID in the export dictionary as "external ID".
@@ -330,7 +344,17 @@ def _save_id(issue_id, issue_export):
     :param issue_id: Issue ID
     :param issue_export: Single issue export dictionary
     """
-    issue_export['externalId'] = str(issue_id)
+    issue_export['externalId'] = _get_id_mapping(issue_id)
+
+
+def _get_id_mapping(issue_id):
+    """
+    Get the Jira value mapping for the ID field.
+
+    :param issue_id: Issue ID
+    :return: Jira value mapping for the ID
+    """
+    return str(issue_id)
 
 
 def _save_subject(subject, issue_export):
@@ -340,7 +364,17 @@ def _save_subject(subject, issue_export):
     :param subject: Issue subject
     :param issue_export: Single issue export dictionary
     """
-    issue_export['summary'] = subject
+    issue_export['summary'] = _get_subject_mapping(subject)
+
+
+def _get_subject_mapping(subject):
+    """
+    Get the Jira value mapping for the subject field.
+
+    :param subject: Issue subject
+    :return: Jira value mapping for the subject
+    """
+    return subject
 
 
 def _save_author(author, users, projects, resource_value_mappings,
@@ -356,11 +390,22 @@ def _save_author(author, users, projects, resource_value_mappings,
                                     by the final user
     :param issue_export: Single issue export dictionary
     """
-    author_value_mapping = \
-        _get_resource_mapping(users[author.id], projects,
-                              resource_value_mappings)
+    issue_export['reporter'] = _get_author_mapping(users[author.id], projects,
+                                                   resource_value_mappings)
 
-    issue_export['reporter'] = author_value_mapping
+
+def _get_author_mapping(author, projects, resource_value_mappings):
+    """
+    Get the Jira value mapping for the author field.
+
+    :param author: Issue author
+    :param projects: All Redmine projects
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    :return: Jira value mapping for the author
+    """
+    return _get_resource_mapping(author, projects, resource_value_mappings)
 
 
 def _save_tracker(tracker, trackers, projects, resource_value_mappings,
@@ -376,11 +421,23 @@ def _save_tracker(tracker, trackers, projects, resource_value_mappings,
                                     by the final user
     :param issue_export: Single issue export dictionary
     """
-    tracker_value_mapping = \
-        _get_resource_mapping(trackers[tracker.id], projects,
-                              resource_value_mappings)
+    issue_export['issueType'] = \
+        _get_tracker_mapping(trackers[tracker.id], projects,
+                             resource_value_mappings)
 
-    issue_export['issueType'] = tracker_value_mapping
+
+def _get_tracker_mapping(tracker, projects, resource_value_mappings):
+    """
+    Get the Jira value mapping for the tracker field.
+
+    :param tracker: Issue tracker
+    :param projects: All Redmine projects
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    :return: Jira value mapping for the tracker
+    """
+    return _get_resource_mapping(tracker, projects, resource_value_mappings)
 
 
 def _save_status(status, issue_statuses, projects, resource_value_mappings,
@@ -396,11 +453,23 @@ def _save_status(status, issue_statuses, projects, resource_value_mappings,
                                     by the final user
     :param issue_export: Single issue export dictionary
     """
-    status_value_mapping = \
-        _get_resource_mapping(issue_statuses[status.id], projects,
-                              resource_value_mappings)
+    issue_export['status'] = \
+        _get_status_mapping(issue_statuses[status.id], projects,
+                            resource_value_mappings)
 
-    issue_export['status'] = status_value_mapping
+
+def _get_status_mapping(status, projects, resource_value_mappings):
+    """
+    Get the Jira value mapping for the status field.
+
+    :param status: Issue status
+    :param projects: All Redmine projects
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    :return: Jira value mapping for the issue status
+    """
+    return _get_resource_mapping(status, projects, resource_value_mappings)
 
 
 def _save_priority(priority, issue_priorities, projects,
@@ -416,12 +485,25 @@ def _save_priority(priority, issue_priorities, projects,
                                     by the final user
     :param issue_export: Single issue export dictionary
     """
-    priority_value_mapping = \
-        _get_resource_mapping(issue_priorities[priority.id], projects,
-                              resource_value_mappings,
-                              resource_type=models.RedmineIssuePriority)
+    issue_export['priority'] = \
+        _get_priority_mapping(issue_priorities[priority.id], projects,
+                              resource_value_mappings)
 
-    issue_export['priority'] = priority_value_mapping
+
+def _get_priority_mapping(priority, projects, resource_value_mappings):
+    """
+    Get the Jira value mapping for the priority field.
+
+    :param priority: Issue priority
+    :param projects: All Redmine projects
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    :return: Jira value mapping for the issue priority
+    """
+    return _get_resource_mapping(priority, projects,
+                                 resource_value_mappings,
+                                 resource_type=models.RedmineIssuePriority)
 
 
 def _save_created_on(created_on, issue_export):
@@ -431,7 +513,17 @@ def _save_created_on(created_on, issue_export):
     :param created_on: Issue creation date
     :param issue_export: Single issue export dictionary
     """
-    issue_export['created'] = created_on.isoformat()
+    issue_export['created'] = _get_created_on_mapping(created_on)
+
+
+def _get_created_on_mapping(created_on):
+    """
+    Get the Jira value mapping for the creation date field.
+
+    :param created_on: Issue creation date
+    :return: Jira value mapping for the creation date
+    """
+    return created_on.isoformat()
 
 
 def _save_updated_on(updated_on, issue_export):
@@ -441,7 +533,17 @@ def _save_updated_on(updated_on, issue_export):
     :param updated_on: Issue modification date
     :param issue_export: Single issue export dictionary
     """
-    issue_export['updated'] = updated_on.isoformat()
+    issue_export['updated'] = _get_updated_on_mapping(updated_on)
+
+
+def _get_updated_on_mapping(updated_on):
+    """
+    Get the Jira value mapping for the modification date field.
+
+    :param updated_on: Issue modification date
+    :return: Jira value mapping for the modification date
+    """
+    return updated_on.isoformat()
 
 
 def _save_description(description, issue_export):
@@ -451,10 +553,20 @@ def _save_description(description, issue_export):
     :param description: Issue description
     :param issue_export: Single issue export dictionary
     """
+    issue_export['description'] = _get_description_mapping(description)
+
+
+def _get_description_mapping(description):
+    """
+    Get the Jira value mapping for the description field.
+
+    :param description: Issue description
+    :return: Jira value mapping for the description
+    """
     if config.REDMINE_TEXT_FORMATTING != 'none':
         description = text2confluence_wiki(description)
 
-    issue_export['description'] = description
+    return description
 
 
 def _save_assigned_to(assigned_to, users, groups, projects,
@@ -478,14 +590,31 @@ def _save_assigned_to(assigned_to, users, groups, projects,
     """
     # If the assignee is a group...
     if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and assigned_to.id in groups:
-        assigned_to = _get_resource_mapping(groups[assigned_to.id], projects,
-                                            resource_value_mappings)
+        assigned_to = \
+            _get_assigned_to_mapping(groups[assigned_to.id], projects,
+                                     resource_value_mappings)
     # ...else if the assignee is a user...
     else:
-        assigned_to = _get_resource_mapping(users[assigned_to.id], projects,
-                                            resource_value_mappings)
+        assigned_to = \
+            _get_assigned_to_mapping(users[assigned_to.id], projects,
+                                     resource_value_mappings)
 
     issue_export['assignee'] = assigned_to
+
+
+def _get_assigned_to_mapping(assigned_to, projects, resource_value_mappings):
+    """
+    Get the Jira value mapping for the assignee field.
+
+    :param assigned_to: Issue assignee
+    :param projects: All Redmine projects
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    :return: Jira value mapping for the assignee
+    """
+    return _get_resource_mapping(assigned_to, projects,
+                                 resource_value_mappings)
 
 
 def _save_category(category, project_id, issue_categories, projects,
@@ -505,10 +634,8 @@ def _save_category(category, project_id, issue_categories, projects,
     :param issue_export: Single issue export dictionary
     """
     category_value_mapping, category_resource_type_mapping = \
-        _get_resource_mapping(issue_categories[project_id][category.id],
-                              projects, resource_value_mappings,
-                              project_id=project_id,
-                              include_type_mapping=True)
+        _get_category_mapping(issue_categories[project_id][category.id],
+                              project_id, projects, resource_value_mappings)
 
     if category_resource_type_mapping.jira == models.JiraProjectComponent:
         # Add component to parent project export dictionary
@@ -523,6 +650,29 @@ def _save_category(category, project_id, issue_categories, projects,
                     .append(category_value_mapping)
 
 
+def _get_category_mapping(category, project_id, projects,
+                          resource_value_mappings):
+    """
+    Get both the Jira value mapping for the category field,
+    and the related ``ResourceTypeMapping`` object describing
+    the Redmine and Jira resource types respectively involved
+    in the mapping.
+
+    :param category: Issue category
+    :param project_id: ID of the project the issue belongs to
+    :param projects: All Redmine projects
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    :return: A tuple containing both the jira value mapping for the
+             category and the related ``ResourceTypeMapping`` object
+    """
+    return _get_resource_mapping(category, projects,
+                                 resource_value_mappings,
+                                 project_id=project_id,
+                                 include_type_mapping=True)
+
+
 def _save_estimated_hours(estimated_hours, issue_export):
     """
     Save issue estimated hours in the export dictionary.
@@ -531,7 +681,17 @@ def _save_estimated_hours(estimated_hours, issue_export):
     :param issue_export: Single issue export dictionary
     """
     issue_export['originalEstimate'] = \
-        duration_isoformat(timedelta(hours=estimated_hours))
+        _get_estimated_hours_mapping(estimated_hours)
+
+
+def _get_estimated_hours_mapping(estimated_hours):
+    """
+    Get the Jira value mapping for the estimated hours field.
+
+    :param estimated_hours: Issue estimated hours
+    :return: Jira value mapping for the estimated hours
+    """
+    return duration_isoformat(timedelta(hours=estimated_hours))
 
 
 def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
@@ -554,70 +714,8 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
     for custom_field in custom_fields:
         custom_field_def = issue_custom_fields[custom_field.id]
 
-        redmine_value = custom_field.value
-        jira_value = redmine_value
-
-        if redmine_value:
-            if custom_field_def.field_format == 'bool':
-                if redmine_value == '1':
-                    jira_value = 'Yes'
-                elif redmine_value == '0':
-                    jira_value = 'No'
-            elif custom_field_def.field_format == 'date':
-                jira_value = redmine_value.isoformat()
-            elif custom_field_def.field_format == 'float':
-                jira_value = float(redmine_value)
-            elif custom_field_def.field_format == 'int':
-                jira_value = int(redmine_value)
-            elif custom_field_def.field_format in ['text', 'string']:
-                if config.REDMINE_TEXT_FORMATTING != 'none':
-                    # Here we should check also if text formatting is enabled
-                    # at custom field level via the "Text Formatting" option.
-                    # Unfortunately the current version of Redmine REST API
-                    # for custom fields does not return this property.
-                    # Therefore we make the assumption that if the Redmine
-                    # administrator enabled the text formatting at system
-                    # level, he did it for text custom fields as well.
-                    jira_value = text2confluence_wiki(redmine_value)
-            elif custom_field_def.field_format == 'user':
-                if getattr(custom_field_def, 'multiple', False):
-                    user_ids = set(map(int, redmine_value))
-                    jira_value = [
-                        _get_resource_mapping(user, projects,
-                                              resource_value_mappings)
-                        for user_id, user in users.items()
-                        if user_id in user_ids
-                    ]
-                else:
-                    user_id = int(redmine_value)
-                    jira_value = \
-                        _get_resource_mapping(users[user_id], projects,
-                                              resource_value_mappings)
-            elif custom_field_def.field_format == 'version':
-                if getattr(custom_field_def, 'multiple', False):
-                    version_ids = set(map(int, redmine_value))
-                    jira_value = [
-                        _get_resource_mapping(
-                            version, projects, resource_value_mappings)
-                        for version_id, version in versions[project_id].items()
-                        if version_id in version_ids
-                    ]
-                else:
-                    version_id = int(redmine_value)
-                    jira_value = \
-                        _get_resource_mapping(
-                            versions[project_id][version_id], projects,
-                            resource_value_mappings)
-            elif custom_field_def.field_format in ['link', 'list']:
-                pass
-            else:
-                raise NotImplementedError(
-                    "'{}' field format not supported!"
-                    .format(custom_field_def.field_format))
-
-        field_name = \
-            _get_resource_mapping(custom_field, projects,
-                                  resource_value_mappings)
+        field_name = _get_custom_field_mapping(custom_field, projects,
+                                               resource_value_mappings)
 
         format_mapping = \
             ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS[custom_field_def.field_format]
@@ -627,14 +725,115 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
             if getattr(custom_field_def, 'multiple', False) \
             else format_mapping['single']
 
+        value = _get_custom_field_value_mapping(custom_field, project_id,
+                                                issue_custom_fields, users,
+                                                projects, versions,
+                                                resource_value_mappings)
+
         custom_field_dict = {
             'fieldName': field_name,
             'fieldType': field_type,
-            'value': jira_value
+            'value': value
         }
 
         issue_export.setdefault('customFieldValues', []) \
                     .append(custom_field_dict)
+
+
+def _get_custom_field_mapping(custom_field, projects, resource_value_mappings):
+    """
+    Get the Jira value mapping for the issue custom field.
+
+    :param custom_field: Issue custom field
+    :param projects: All Redmine projects
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    :return: Jira value mapping for the custom field
+    """
+    return _get_resource_mapping(custom_field, projects,
+                                 resource_value_mappings)
+
+
+def _get_custom_field_value_mapping(custom_field, project_id,
+                                    issue_custom_fields, users, projects,
+                                    versions, resource_value_mappings):
+    """
+    Get the Jira value mapping for the custom field value.
+
+    :param custom_field: Issue custom field
+    :param project_id: ID of the project the issue belongs to
+    :param issue_custom_fields: All Redmine issue custom fields definitions
+    :param users: All Redmine users
+    :param projects: All Redmine projects
+    :param versions: All Redmine versions on a per-project basis
+    :param resource_value_mappings: Dictionary of the resource mappings
+                                    dynamically defined at runtime
+                                    by the final user
+    :return: Jira value mapping for the custom field value
+    """
+    custom_field_def = issue_custom_fields[custom_field.id]
+    redmine_value = custom_field.value
+    jira_value = redmine_value
+
+    if redmine_value:
+        if custom_field_def.field_format == 'bool':
+            if redmine_value == '1':
+                jira_value = 'Yes'
+            elif redmine_value == '0':
+                jira_value = 'No'
+        elif custom_field_def.field_format == 'date':
+            jira_value = redmine_value.isoformat()
+        elif custom_field_def.field_format == 'float':
+            jira_value = float(redmine_value)
+        elif custom_field_def.field_format == 'int':
+            jira_value = int(redmine_value)
+        elif custom_field_def.field_format in ['text', 'string']:
+            if config.REDMINE_TEXT_FORMATTING != 'none':
+                # Here we should check also if text formatting is enabled
+                # at custom field level via the "Text Formatting" option.
+                # Unfortunately the current version of Redmine REST API
+                # for custom fields does not return this property.
+                # Therefore we make the assumption that if the Redmine
+                # administrator enabled the text formatting at system
+                # level, he did it for text custom fields as well.
+                jira_value = text2confluence_wiki(redmine_value)
+        elif custom_field_def.field_format == 'user':
+            if getattr(custom_field_def, 'multiple', False):
+                user_ids = set(map(int, redmine_value))
+                jira_value = [
+                    _get_resource_mapping(
+                        user, projects, resource_value_mappings)
+                    for user_id, user in users.items()
+                    if user_id in user_ids
+                ]
+            else:
+                user_id = int(redmine_value)
+                jira_value = _get_resource_mapping(
+                    users[user_id], projects, resource_value_mappings)
+        elif custom_field_def.field_format == 'version':
+            if getattr(custom_field_def, 'multiple', False):
+                version_ids = set(map(int, redmine_value))
+                jira_value = [
+                    _get_resource_mapping(
+                        version, projects, resource_value_mappings)
+                    for version_id, version in versions[project_id].items()
+                    if version_id in version_ids
+                ]
+            else:
+                version_id = int(redmine_value)
+                jira_value = \
+                    _get_resource_mapping(
+                        versions[project_id][version_id], projects,
+                        resource_value_mappings)
+        elif custom_field_def.field_format in ['link', 'list']:
+            pass
+        else:
+            raise NotImplementedError(
+                "'{}' field format not supported!"
+                .format(custom_field_def.field_format))
+
+    return jira_value
 
 
 def _save_watchers(watchers, users, projects, resource_value_mappings,
