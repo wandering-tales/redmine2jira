@@ -41,10 +41,80 @@ from __future__ import absolute_import
 CHECK_ISSUE_ID_FILTER_AVAILABILITY = True
 ISSUE_ID_FILTER_AVAILABLE = True
 
-# Custom Redmine to Jira user mappings used during issue export.
-# The mapping is defined via usernames (login names). When no mapping
-# is defined for a referenced username the tool will prompt the user to
-# input a Jira username.
+#
+# Resource mappings
+#
+
+# Here follows a bunch of settings related to mappings used during the
+# issues export to statically map Redmine resource instances to Jira ones.
+#
+# Each settings is valid within the context of a specific mapping between
+# a Redmine resource type and a Jira one. It's worth to mention that those
+# resource type mappings consist in One-to-Many relationships: a Redmine
+# resource type may be mapped to one or more Jira resource types.
+#
+# The naming convention for these settings is the following:
+#
+# REDMINE_{RESOURCE_TYPE}_JIRA_{RESOURCE_TYPE}_MAPPINGS
+#
+# where the two "RESOURCE_TYPE" placeholders respectively refers to the
+# Redmine and Jira resource types where the mappings of resources apply.
+
+# These settings are declared as Python dictionaries where the keys and the
+# values are both "identifying names" of the instances of the two resource
+# types involved in the mappings, respectively for Redmine and Jira.
+# By "identifying names", in this context, we mean strings that "uniquely"
+# identify each instance of a specific resource type, in addition to its
+# internal ID number.
+# As each resource type, either it belongs to Redmine or Jira, has always
+# at least one field designated to contain such identifying name, for each
+# one of its instances, we will specify, in a comment before each dictionary
+# setting, which of them are involved in the mapping:
+#
+# Example:
+#
+#    {redmine_resource_type}.{identifying_field} ==>
+#       {jira_resource_type}.{identifying_field}
+#
+# Furthermore, some of the mappings defined via these settings are valid
+# only "on a per-project basis".
+# As both Redmine and Jira are project management tools, it's natural to
+# state that for both of them the "Project" is one of the main resource types
+# around which they are built, likewise any other software tool belonging
+# to this category. In turn, there are some resource types which instances
+# are defined only within the context of a specific "Project" instance.
+# In such cases our dictionary keys become the "identifying names" of
+# Redmine projects ("identifier" field), and the values the final mappings
+# with respect to the resource type instances:
+#
+# Example:
+#
+#    'my-cool-project': {
+#        'My Redmine instance name': 'My Jira instance name',
+#        ...
+#    }
+#    ...
+#
+# As we assume a Redmine project has a One-to-One mapping with a Jira project,
+# it would be pointless to specify the latter.
+# Therefore, for mappings defined on a per project basis we extend the above
+# syntax as follows:
+#
+#    {redmine_project}.{redmine_resource_type}.{identifying_field} ==>
+#       {jira_project}.{jira_resource_type}.{identifying_field}
+#
+# The configuration of all the following mappings entirely depends on the
+# specific use case, hence all the dictionaries hereby defined are empty.
+# That's because they are meant to be properly overridden in the
+# `config_local.py` file, according to the actual configuration of both
+# the Redmine and Jira instances he's dealing with.
+#
+# In case the tool detect some needed missing mapping at runtime, it will
+# prompt to input one, which will be retained for the whole session.
+#
+
+#
+# User.Login ==> User.Username
 #
 # NOTE: The concept of "Jira user" is also extended to Jira Service Desk
 #       "portal only customers".
@@ -57,20 +127,19 @@ REDMINE_USER_JIRA_USER_MAPPINGS = {
     #    ...
 }
 
-# Custom Redmine group to Jira user mappings used during issue export.
+#
+# Group.Name ==> User.Username
+#
 # The only relations between issues and groups is via the "Assignee"
 # field, and only if issue assignment to groups is explicitly allowed
 # in the Redmine instance settings.
 # However, as Jira does not (and will not) support issue assignment to groups
 # (https://jira.atlassian.com/browse/JRASERVER-1397) one possible mapping
-# is from group names to user names. It's worth to check out the section
-# "Managing Issues via a User Account" in the following KB article:
+# is from external system group names to Jira usernames.
+# It's worth to check out the section "Managing Issues via a User Account"
+# in the following KB article:
 #
 # https://confluence.atlassian.com/jira/how-do-i-assign-issues-to-multiple-users-207489749.html#HowdoIassignissuestomultipleusers-ManagingIssuesviaaUserAccount
-#
-# Therefore in such scenario the mapping is defined between Redmine
-# group names and Jira usernames. When no mapping is defined for a
-# referenced group the tool will prompt the user to input a Jira username.
 #
 # NOTE: The concept of "Jira user" is also extended to Jira Service Desk
 #       "portal only customers".
@@ -83,10 +152,8 @@ REDMINE_GROUP_JIRA_USER_MAPPINGS = {
     #    ...
 }
 
-# Custom Redmine to Jira project mappings used during issue export.
-# The mapping is defined between Redmine project identifiers and
-# Jira project keys. When no mapping is defined for a referenced project
-# the tool will prompt the user to input a Jira project key.
+#
+# Project.Identifier ==> Project.Key
 #
 REDMINE_PROJECT_JIRA_PROJECT_MAPPINGS = {
     #
@@ -96,11 +163,8 @@ REDMINE_PROJECT_JIRA_PROJECT_MAPPINGS = {
     #    ...
 }
 
-
-# Custom Redmine tracker to Jira issue type mappings used during issue export.
-# The mapping is defined between Redmine tracker and Jira issue type names,
-# case sensitive. When no mapping is defined for a referenced tracker
-# the tool will prompt the user to input a Jira issue type name.
+#
+# Tracker.Name ==> Issue_Type.Name
 #
 REDMINE_TRACKER_JIRA_ISSUE_TYPE_MAPPINGS = {
     #
@@ -110,10 +174,8 @@ REDMINE_TRACKER_JIRA_ISSUE_TYPE_MAPPINGS = {
     #    ...
 }
 
-# Custom Redmine to Jira issue status mappings used during issue export.
-# The mapping is defined between Redmine and Jira issue status names,
-# case sensitive. When no mapping is defined for a referenced issue status
-# the tool will prompt the user to input a Jira issue status name.
+#
+# Issue_Status.Name ==> Issue_Status.Name
 #
 REDMINE_ISSUE_STATUS_JIRA_ISSUE_STATUS_MAPPINGS = {
     #
@@ -123,10 +185,8 @@ REDMINE_ISSUE_STATUS_JIRA_ISSUE_STATUS_MAPPINGS = {
     #    ...
 }
 
-# Custom Redmine to Jira issue priority mappings used during issue export.
-# The mapping is defined between Redmine and Jira issue priority names,
-# case sensitive. When no mapping is defined for a referenced issue priority
-# the tool will prompt the user to input a Jira issue priority name.
+#
+# Issue_Priority.Name ==> Issue_Priority.Name
 #
 REDMINE_ISSUE_PRIORITY_JIRA_ISSUE_PRIORITY_MAPPINGS = {
     #
@@ -136,10 +196,8 @@ REDMINE_ISSUE_PRIORITY_JIRA_ISSUE_PRIORITY_MAPPINGS = {
     #    ...
 }
 
-# Custom Redmine to Jira custom fields mappings used during issue export.
-# The mapping is defined between Redmine and Jira custom field names,
-# case sensitive. When no mapping is defined for a referenced custom field
-# the tool will prompt the user to input a Jira custom field name.
+#
+# Custom_Field.Name ==> Custom_Field.Name
 #
 REDMINE_CUSTOM_FIELD_JIRA_CUSTOM_FIELD_MAPPINGS = {
     #
@@ -150,15 +208,8 @@ REDMINE_CUSTOM_FIELD_JIRA_CUSTOM_FIELD_MAPPINGS = {
 }
 
 
-# Custom Redmine issue category to Jira component mappings
-# used during issue export.
-# The mapping is defined between Redmine issue category names
-# and Jira component names, case sensitive, on a per-project basis.
-# Basically this is a dictionary of projects, using project identifiers
-# as keys, and the mappings are nested dictionaries with respect to the
-# related project.
-# When no mapping is defined for a referenced issue category
-# the tool will prompt the user to input a Jira component name.
+#
+# Project.Issue_Category.Name ==> Project.Component.Name
 #
 REDMINE_ISSUE_CATEGORY_JIRA_COMPONENT_MAPPINGS = {
     #
@@ -171,15 +222,8 @@ REDMINE_ISSUE_CATEGORY_JIRA_COMPONENT_MAPPINGS = {
     #    ...
 }
 
-# Custom Redmine issue category to Jira label mappings
-# used during issue export.
-# The mapping is defined between Redmine issue category names
-# and Jira labels, case sensitive, on a per-project basis.
-# Basically this is a dictionary of projects, using project identifiers
-# as keys, and the mappings are nested dictionaries with respect to the
-# related project.
-# When no mapping is defined for a referenced issue category
-# the tool will prompt the user to input a Jira label.
+#
+# Project.Issue_Category.Name ==> Project.Label.Name
 #
 REDMINE_ISSUE_CATEGORY_JIRA_LABEL_MAPPINGS = {
     #
