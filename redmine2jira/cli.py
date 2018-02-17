@@ -506,7 +506,7 @@ def _save_category(category, project_id, issue_categories, projects,
     :param project_export: Parent project export dictionary
     :param issue_export: Single issue export dictionary
     """
-    category_resource_type_mapping, category_value_mapping = \
+    category_value_mapping, category_resource_type_mapping = \
         _get_resource_mapping(issue_categories[project_id][category.id],
                               projects, resource_value_mappings,
                               project_id=project_id)
@@ -585,7 +585,7 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                     user_ids = set(map(int, redmine_value))
                     jira_value = [
                         _get_resource_mapping(user, projects,
-                                              resource_value_mappings)[1]
+                                              resource_value_mappings)[0]
                         for user_id, user in users.items()
                         if user_id in user_ids
                     ]
@@ -593,13 +593,13 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                     user_id = int(redmine_value)
                     jira_value = \
                         _get_resource_mapping(users[user_id], projects,
-                                              resource_value_mappings)[1]
+                                              resource_value_mappings)[0]
             elif custom_field_def.field_format == 'version':
                 if getattr(custom_field_def, 'multiple', False):
                     version_ids = set(map(int, redmine_value))
                     jira_value = [
                         _get_resource_mapping(
-                            version, projects, resource_value_mappings)[1]
+                            version, projects, resource_value_mappings)[0]
                         for version_id, version in versions[project_id].items()
                         if version_id in version_ids
                     ]
@@ -608,7 +608,7 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                     jira_value = \
                         _get_resource_mapping(
                             versions[project_id][version_id], projects,
-                            resource_value_mappings)[1]
+                            resource_value_mappings)[0]
             elif custom_field_def.field_format in ['link', 'list']:
                 pass
             else:
@@ -618,7 +618,7 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
 
         field_name = \
             _get_resource_mapping(custom_field, projects,
-                                  resource_value_mappings)[1]
+                                  resource_value_mappings)[0]
 
         format_mapping = \
             ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS[custom_field_def.field_format]
@@ -958,7 +958,7 @@ def _get_resource_mapping(resource, projects, resource_value_mappings,
                  project_id,
                  redmine_resource_value)] = jira_resource_value
 
-    return resource_type_mapping, jira_resource_value
+    return jira_resource_value, resource_type_mapping
 
 
 @main.group('list')
