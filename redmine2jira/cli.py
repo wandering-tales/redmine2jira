@@ -328,8 +328,7 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
 
         if hasattr(issue, 'assigned_to'):
             _save_assigned_to(issue.assigned_to, users, groups, projects,
-                              resource_value_mappings, issue_export,
-                              is_group=True)
+                              resource_value_mappings, issue_export)
 
         if hasattr(issue, 'category'):
             _save_category(issue.category, issue.project.id, issue_categories,
@@ -521,8 +520,7 @@ def _save_description(description, issue_export):
 
 
 def _save_assigned_to(assigned_to, users, groups, projects,
-                      resource_value_mappings, issue_export,
-                      is_group=False):
+                      resource_value_mappings, issue_export):
     """
     Save issue assignee in the export dictionary.
     By default the assignee is a user, but if the
@@ -539,8 +537,6 @@ def _save_assigned_to(assigned_to, users, groups, projects,
                                     dynamically defined at runtime
                                     by the final user
     :param issue_export: Single issue export dictionary
-    :param is_group: If `True`` the assignee is interpreted as a group
-                     rather than an user; ``False`` as an user
     """
     # If the assignee is a group...
     if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and assigned_to.id in groups:
