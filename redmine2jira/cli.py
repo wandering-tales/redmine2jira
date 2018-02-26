@@ -614,8 +614,7 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                                                resource_value_mappings)[1]
         }
 
-        custom_field_def = next(cf for cf_id, cf in issue_custom_fields.items()
-                                if cf_id == custom_field.id)
+        custom_field_def = issue_custom_fields[custom_field.id]
 
         if getattr(custom_field_def, 'multiple', False):
             custom_field_dict['fieldType'] = \
