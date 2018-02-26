@@ -236,6 +236,19 @@ REDMINE_ISSUE_CATEGORY_JIRA_LABEL_MAPPINGS = {
     #    ...
 }
 
+#
+# Project.Version.Name ==> Project.Version.Name
+#
+REDMINE_VERSION_JIRA_VERSION_MAPPINGS = {
+    #
+    # Example:
+    #
+    #    'my-cool-project': {
+    #        '1.0.0': '1.0.0',
+    #        ...
+    #    }
+    #    ...
+}
 
 ###########
 # Redmine #

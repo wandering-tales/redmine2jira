@@ -669,12 +669,16 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                 if getattr(custom_field_def, 'multiple', False):
                     version_ids = set(map(int, redmine_value))
                     jira_value = [
-                        version.name
+                        _get_resource_mapping(
+                            version, resource_value_mappings)[1]
                         for version_id, version in versions[project_id].items()
-                        if version_id in version_ids]
+                        if version_id in version_ids
+                    ]
                 else:
                     version_id = int(redmine_value)
-                    jira_value = versions[project_id][version_id].name
+                    jira_value = \
+                        _get_resource_mapping(versions[project_id][version_id],
+                                              resource_value_mappings)[1]
             elif custom_field_def.field_format in ['link', 'list']:
                 pass
             else:
