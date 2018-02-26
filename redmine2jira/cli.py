@@ -1091,6 +1091,16 @@ def list_custom_fields():
     _list_resources(custom_fields, sort_key='name')
 
 
+@list_resources.command('issue_categories')
+@click.argument('project', 'Project ID/identifier')
+def list_issue_categories(project):
+    """List Redmine issue categories for a project."""
+
+    categories = redmine.version.filter(project_id=project)
+
+    _list_resources(categories, sort_key='name', exclude_attrs=['project'])
+
+
 def _list_resources(resource_set, sort_key,
                     format_dict=None, exclude_attrs=None):
     # Find resource attributes excluding relations with other resource types
