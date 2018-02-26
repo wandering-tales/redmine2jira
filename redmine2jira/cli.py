@@ -300,7 +300,7 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
         # The issue project must be saved before everything else.
         # That's because all the issues entities must be children of a project
         # entity in the export dictionary.
-        project_export = _save_project(projects[issue.project.id],
+        project_export = _save_project(projects[issue.project.id], projects,
                                        resource_value_mappings, issues_export)
 
         # Create and append new empty issue dictionary
@@ -311,13 +311,13 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
         # Save required standard fields
         _save_id(issue.id, issue_export)
         _save_subject(issue.subject, issue_export)
-        _save_author(users[issue.author.id],
+        _save_author(users[issue.author.id], projects,
                      resource_value_mappings, issue_export)
-        _save_tracker(trackers[issue.tracker.id],
+        _save_tracker(trackers[issue.tracker.id], projects,
                       resource_value_mappings, issue_export)
-        _save_issue_status(issue_statuses[issue.status.id],
+        _save_issue_status(issue_statuses[issue.status.id], projects,
                            resource_value_mappings, issue_export)
-        _save_issue_priority(issue_priorities[issue.priority.id],
+        _save_issue_priority(issue_priorities[issue.priority.id], projects,
                              resource_value_mappings, issue_export)
         _save_creation_date(issue.created_on, issue_export)
         _save_modification_date(issue.updated_on, issue_export)
@@ -330,19 +330,19 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
             # If the issue assignee is a Redmine group...
             if config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS and \
                issue.assigned_to.id in groups:
-                _save_assignee(groups[issue.assigned_to.id],
+                _save_assignee(groups[issue.assigned_to.id], projects,
                                resource_value_mappings, issue_export,
                                is_group=True)
             else:
-                _save_assignee(users[issue.assigned_to.id],
+                _save_assignee(users[issue.assigned_to.id], projects,
                                resource_value_mappings, issue_export)
 
         if hasattr(issue, 'category'):
             category = issue_categories[issue.project.id][issue.category.id]
 
-            _save_issue_category(category, issue.project.id,
-                                 resource_value_mappings,
-                                 project_export, issue_export)
+            _save_issue_category(category, issue.project.id, projects,
+                                 resource_value_mappings, project_export,
+                                 issue_export)
 
         if hasattr(issue, 'estimated_hours'):
             _save_estimated_hours(issue.estimated_hours, issue_export)
@@ -350,15 +350,15 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
         # Save custom fields
         if hasattr(issue, 'custom_fields'):
             _save_custom_fields(issue.custom_fields, issue.project.id,
-                                issue_custom_fields, users, versions,
+                                issue_custom_fields, users, projects, versions,
                                 resource_value_mappings, issue_export)
 
         # Save related resources
-        _save_watchers(issue.watchers, users,
+        _save_watchers(issue.watchers, users, projects,
                        resource_value_mappings, issue_export)
-        _save_attachments(issue.attachments, users,
+        _save_attachments(issue.attachments, users, projects,
                           resource_value_mappings, issue_export)
-        _save_journals(issue.journals, users,
+        _save_journals(issue.journals, users, projects,
                        resource_value_mappings, issue_export)
         _save_time_entries(issue.time_entries)
 
@@ -367,18 +367,19 @@ def _export_issues(issues, users, groups, projects, trackers, issue_statuses,
         # TODO Save relations
 
 
-def _save_project(project, resource_value_mappings, issues_export):
+def _save_project(project, projects, resource_value_mappings, issues_export):
     """
     Save issue project in the export dictionary.
 
     :param project: Issue project
+    :param projects: All Redmine projects
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
     :param issues_export: Issues export dictionary
     """
     project_type_mapping, project_value_mapping = \
-        _get_resource_mapping(project, resource_value_mappings)
+        _get_resource_mapping(project, projects, resource_value_mappings)
 
     projects = issues_export.setdefault('projects', [])
 
@@ -412,67 +413,73 @@ def _save_subject(subject, issue_export):
     issue_export['summary'] = subject
 
 
-def _save_author(author, resource_value_mappings, issue_export):
+def _save_author(author, projects, resource_value_mappings, issue_export):
     """
     Save issue author in the export dictionary.
 
     :param author: Issue author
+    :param projects: All Redmine projects
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
     :param issue_export: Single issue export dictionary
     """
     author_type_mapping, author_value_mapping = \
-        _get_resource_mapping(author, resource_value_mappings)
+        _get_resource_mapping(author, projects, resource_value_mappings)
 
     issue_export['reporter'] = author_value_mapping
 
 
-def _save_tracker(tracker, resource_value_mappings, issue_export):
+def _save_tracker(tracker, projects, resource_value_mappings, issue_export):
     """
     Save issue tracker in the export dictionary.
 
     :param tracker: Issue tracker
+    :param projects: All Redmine projects
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
     :param issue_export: Single issue export dictionary
     """
     tracker_type_mapping, tracker_value_mapping = \
-        _get_resource_mapping(tracker, resource_value_mappings)
+        _get_resource_mapping(tracker, projects, resource_value_mappings)
 
     issue_export['issueType'] = tracker_value_mapping
 
 
-def _save_issue_status(issue_status, resource_value_mappings, issue_export):
+def _save_issue_status(issue_status, projects, resource_value_mappings,
+                       issue_export):
     """
     Save issue status in the export dictionary.
 
     :param issue_status: Issue status
+    :param projects: All Redmine projects
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
     :param issue_export: Single issue export dictionary
     """
     issue_status_type_mapping, issue_status_value_mapping = \
-        _get_resource_mapping(issue_status, resource_value_mappings)
+        _get_resource_mapping(issue_status, projects, resource_value_mappings)
 
     issue_export['status'] = issue_status_value_mapping
 
 
-def _save_issue_priority(issue_priority, resource_value_mappings,
+def _save_issue_priority(issue_priority, projects, resource_value_mappings,
                          issue_export):
     """
     Save issue priority in the export dictionary.
 
     :param issue_priority: Issue priority
+    :param projects: All Redmine projects
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
     :param issue_export: Single issue export dictionary
     """
     issue_priority_type_mapping, issue_priority_value_mapping = \
-        _get_resource_mapping(issue_priority, resource_value_mappings,
+        _get_resource_mapping(issue_priority, projects,
+                              resource_value_mappings,
                               resource_type="issue_priority")
 
     issue_export['priority'] = issue_priority_value_mapping
@@ -511,7 +518,7 @@ def _save_description(description, issue_export):
     issue_export['description'] = description
 
 
-def _save_assignee(assignee, resource_value_mappings, issue_export,
+def _save_assignee(assignee, projects, resource_value_mappings, issue_export,
                    is_group=False):
     """
     Save issue assignee in the export dictionary.
@@ -522,6 +529,7 @@ def _save_assignee(assignee, resource_value_mappings, issue_export,
 
     :param assignee: Issue assignee, which may refer
                      either to a user or a group
+    :param projects: All Redmine projects
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
@@ -532,21 +540,23 @@ def _save_assignee(assignee, resource_value_mappings, issue_export,
     # If the assignee is not a group, that means is a user...
     if not is_group:
         assignee_type_mapping, assignee_value_mapping = \
-            _get_resource_mapping(assignee, resource_value_mappings)
+            _get_resource_mapping(assignee, projects, resource_value_mappings)
     else:
         assignee_type_mapping, assignee_value_mapping = \
-            _get_resource_mapping(assignee, resource_value_mappings)
+            _get_resource_mapping(assignee, projects, resource_value_mappings)
 
     issue_export['assignee'] = assignee_value_mapping
 
 
-def _save_issue_category(issue_category, project_id, resource_value_mappings,
-                         project_export, issue_export):
+def _save_issue_category(issue_category, project_id, projects,
+                         resource_value_mappings, project_export,
+                         issue_export):
     """
     Save issue category in the export dictionary.
 
     :param issue_category: Issue category
     :param project_id: ID of the project the issue belongs to
+    :param projects: All Redmine projects
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
@@ -554,8 +564,8 @@ def _save_issue_category(issue_category, project_id, resource_value_mappings,
     :param issue_export: Single issue export dictionary
     """
     issue_category_type_mapping, issue_category_value_mapping = \
-        _get_resource_mapping(issue_category, resource_value_mappings,
-                              project_id=project_id)
+        _get_resource_mapping(issue_category, projects,
+                              resource_value_mappings, project_id=project_id)
 
     if issue_category_type_mapping == 'component':
         # Add component to parent project export dictionary
@@ -582,7 +592,8 @@ def _save_estimated_hours(estimated_hours, issue_export):
 
 
 def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
-                        versions, resource_value_mappings, issue_export):
+                        projects, versions, resource_value_mappings,
+                        issue_export):
     """
     Save issue custom fields to export dictionary.
 
@@ -590,6 +601,7 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
     :param project_id: ID of the project the issue belongs to
     :param issue_custom_fields: All Redmine issue custom fields definitions
     :param users: All Redmine users
+    :param projects: All Redmine projects
     :param versions: All Redmine versions on a per-project basis
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
@@ -598,7 +610,7 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
     """
     for custom_field in custom_fields:
         custom_field_dict = {
-            'fieldName': _get_resource_mapping(custom_field,
+            'fieldName': _get_resource_mapping(custom_field, projects,
                                                resource_value_mappings)[1]
         }
 
@@ -643,14 +655,15 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                 if getattr(custom_field_def, 'multiple', False):
                     user_ids = set(map(int, redmine_value))
                     jira_value = [
-                        _get_resource_mapping(user, resource_value_mappings)[1]
+                        _get_resource_mapping(user, projects,
+                                              resource_value_mappings)[1]
                         for user_id, user in users.items()
                         if user_id in user_ids
                     ]
                 else:
                     user_id = int(redmine_value)
                     jira_value = \
-                        _get_resource_mapping(users[user_id],
+                        _get_resource_mapping(users[user_id], projects,
                                               resource_value_mappings)[1]
             elif custom_field_def.field_format == 'version':
                 if getattr(custom_field_def, 'multiple', False):
@@ -675,12 +688,14 @@ def _save_custom_fields(custom_fields, project_id, issue_custom_fields, users,
                     .append(custom_field_dict)
 
 
-def _save_watchers(watchers, users, resource_value_mappings, issue_export):
+def _save_watchers(watchers, users, projects, resource_value_mappings,
+                   issue_export):
     """
     Save issue watchers to export dictionary.
 
     :param watchers: Issue watchers
     :param users: All Redmine users
+    :param projects: All Redmine projects
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
@@ -688,20 +703,21 @@ def _save_watchers(watchers, users, resource_value_mappings, issue_export):
     """
     for watcher in watchers:
         user_type_mapping, user_value_mapping = \
-            _get_resource_mapping(users[watcher.id],
+            _get_resource_mapping(users[watcher.id], projects,
                                   resource_value_mappings)
 
         issue_export.setdefault('watchers', []) \
                     .append(user_value_mapping)
 
 
-def _save_attachments(attachments, users, resource_value_mappings,
+def _save_attachments(attachments, users, projects, resource_value_mappings,
                       issue_export):
     """
     Save issue attachments to export dictionary.
 
     :param attachments: Issue attachments
     :param users: All Redmine users
+    :param projects: All Redmine projects
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
@@ -709,7 +725,7 @@ def _save_attachments(attachments, users, resource_value_mappings,
     """
     for attachment in attachments:
         user_type_mapping, user_value_mapping = \
-            _get_resource_mapping(users[attachment.author.id],
+            _get_resource_mapping(users[attachment.author.id], projects,
                                   resource_value_mappings)
 
         attachment_dict = {
@@ -724,7 +740,8 @@ def _save_attachments(attachments, users, resource_value_mappings,
                     .append(attachment_dict)
 
 
-def _save_journals(journals, users, resource_value_mappings, issue_export):
+def _save_journals(journals, users, projects, resource_value_mappings,
+                   issue_export):
     """
     Save issue journals to export dictionary.
 
@@ -752,6 +769,7 @@ def _save_journals(journals, users, resource_value_mappings, issue_export):
 
     :param journals: Issue journals
     :param users: All Redmine users
+    :param projects: All Redmine projects
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
@@ -759,7 +777,7 @@ def _save_journals(journals, users, resource_value_mappings, issue_export):
     """
     for journal in journals:
         user_type_mapping, user_value_mapping = \
-            _get_resource_mapping(users[journal.user.id],
+            _get_resource_mapping(users[journal.user.id], projects,
                                   resource_value_mappings)
 
         # If there's a user note in the journal item...
@@ -795,7 +813,7 @@ def _save_time_entries(time_entries):
     # TODO Save issue total time spent
 
 
-def _get_resource_mapping(resource, resource_value_mappings,
+def _get_resource_mapping(resource, projects, resource_value_mappings,
                           resource_type=None, project_id=None):
     """
     Find a Jira mapping for both type and value of a Redmine resource instance.
@@ -804,6 +822,7 @@ def _get_resource_mapping(resource, resource_value_mappings,
     user at runtime.
 
     :param resource: Resource instance
+    :param projects: All Redmine projects
     :param resource_value_mappings: Dictionary of the resource mappings
                                     dynamically defined at runtime
                                     by the final user
@@ -848,8 +867,12 @@ def _get_resource_mapping(resource, resource_value_mappings,
             getattr(config, resource_type_mapping_setting_name, {})
 
         if project_id is not None:
+            # Use project identifier instead of its internal ID
+            # to fetch per-project resource value mappings inside
+            # user-defined configuration files.
+            project_identifier = projects[project_id].identifier
             static_resource_value_mappings = \
-                static_resource_value_mappings.get(project_id, {})
+                static_resource_value_mappings.get(project_identifier, {})
 
         jira_resource_value = \
             static_resource_value_mappings.get(redmine_resource_value, None)
