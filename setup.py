@@ -15,6 +15,7 @@ requirements = [
     'Click>=6.0',
     'click-default-group>=1.2',
     'contextlib2==0.5.5',
+    'future>=0.16.0',
     'inflection>=0.3',
     'isodate>=0.6',
     'lxml>=4.1',
