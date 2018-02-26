@@ -569,15 +569,15 @@ def _save_issue_category(issue_category, project_id, projects,
 
     if issue_category_type_mapping == 'component':
         # Add component to parent project export dictionary
-        project_export.setdefault('components', set()) \
-                      .add(issue_category_value_mapping)
+        project_export.setdefault('components', []) \
+                      .append(issue_category_value_mapping)
         # Add component to issue export dictionary
-        issue_export.setdefault('components', set()) \
-                    .add(issue_category_value_mapping)
+        issue_export.setdefault('components', []) \
+                    .append(issue_category_value_mapping)
     elif issue_category_type_mapping == 'label':
         # Add label to issue export dictionary
-        issue_export.setdefault('labels', set()) \
-                    .add(issue_category_value_mapping)
+        issue_export.setdefault('labels', []) \
+                    .append(issue_category_value_mapping)
 
 
 def _save_estimated_hours(estimated_hours, issue_export):
