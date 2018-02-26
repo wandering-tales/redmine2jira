@@ -1101,6 +1101,16 @@ def list_issue_categories(project):
     _list_resources(categories, sort_key='name', exclude_attrs=['project'])
 
 
+@list_resources.command('versions')
+@click.argument('project', 'Project ID/identifier')
+def list_versions(project):
+    """List Redmine versions for a project."""
+
+    versions = redmine.version.filter(project_id=project)
+
+    _list_resources(versions, sort_key='name', exclude_attrs=['project'])
+
+
 def _list_resources(resource_set, sort_key,
                     format_dict=None, exclude_attrs=None):
     # Find resource attributes excluding relations with other resource types
