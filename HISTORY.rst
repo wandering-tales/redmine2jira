@@ -2,6 +2,40 @@
 History
 =======
 
+0.10.0 (2018-03-14)
+-------------------
+
+New features
+************
+
+* Implemented issue journal details export feature
+* Implemented issue category list by project feature
+* Implemented version list by project feature
+
+Improvements
+************
+
+* Added support to version resource type mappings
+* Re-engineered definitions of internal domain entities and their mappings via classes and named tuples
+* Moved definitions of internal domain entities and their mappings to 'resources' sub-package
+* Refactored issues export feature to 'IssueExporter' class
+* Improved and optimized description of resource mappings settings
+* Slightly improved configuration settings comments
+* Updated Sphinx to 1.7.1
+* Several code optimizations
+
+Changes
+*******
+
+Fixes
+*****
+
+* Added Python 2 Unicode compatibility for string type
+* Used project identifier instead of its internal ID to fetch per-project static resource value mappings
+* Used lists instead of sets to achieve Json format serializer compatibility
+* Used safer method to check for journal notes existence before fetching them
+
+
 0.9.0 (2018-02-11)
 ------------------
 
