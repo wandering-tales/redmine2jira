@@ -41,6 +41,7 @@ def main():
 # in order to easily recognize all the issues in the same import batch
 def export_issues(output, query_string):
     """Export Redmine issues."""
+    exporter = IssuesExporter(check_config=True)
 
     if query_string:
         issues = _get_issues_by_filter(query_string)
@@ -50,7 +51,6 @@ def export_issues(output, query_string):
     click.echo("{:d} issue{} found!"
                .format(len(issues), "s" if len(issues) > 1 else ""))
 
-    exporter = IssuesExporter()
     exporter.export(issues)
 
     click.echo("Issues exported in '{}'!".format(output.name))

@@ -12,11 +12,13 @@ try:
 except ImportError:
     from contextlib2 import suppress
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from itertools import chain
+from operator import itemgetter
 
 import click
 
+from click.exceptions import ClickException, UsageError
 from inflection import humanize, underscore
 from isodate import duration_isoformat
 from redminelib import Redmine
@@ -25,8 +27,11 @@ from redminelib.exceptions import ForbiddenError
 from redmine2jira import config
 from redmine2jira.resources import models
 from redmine2jira.resources.mappings import (
+    ALL_RESOURCE_TYPE_MAPPINGS,
+    RESOURCE_TYPE_MAPPINGS_BY_PROJECT,
     RESOURCE_TYPE_IDENTIFYING_FIELD_MAPPINGS,
     ISSUE_CUSTOM_FIELD_TYPE_MAPPINGS,
+    ISSUE_FIELD_MAPPINGS,
     ResourceTypeMapping
 )
 from redmine2jira.utils.text import text2confluence_wiki
@@ -46,7 +51,10 @@ class IssuesExporter(object):
     compatible with the Jira Importer Plugin (JIM).
     """
 
-    def __init__(self):
+    def __init__(self, check_config=False):
+        if check_config:
+            IssuesExporter._validate_config()
+
         redmine = Redmine(config.REDMINE_URL, key=config.REDMINE_API_KEY)
 
         # Get all Redmine users, groups, projects, trackers, issue statuses,
@@ -105,6 +113,39 @@ class IssuesExporter(object):
                     self._versions[project.id][version.id] = version
 
         self._resource_value_mappings = None
+
+    @staticmethod
+    def _validate_config():
+        # Verify that the current configuration settings are well-formed
+        # with respect to the issue journals export feature, but only if
+        # the latter has been enabled.
+        if config.EXPORT_ISSUE_JOURNALS:
+            for rtp in ALL_RESOURCE_TYPE_MAPPINGS:
+                rtp_setting_name = \
+                    '{}_{}_MAPPINGS'.format(
+                        underscore(rtp.redmine.__name__).upper(),
+                        underscore(rtp.jira.__name__).upper())
+
+                static_rvp = getattr(config, rtp_setting_name, {})
+
+                if (rtp in RESOURCE_TYPE_MAPPINGS_BY_PROJECT and
+                    not all((isinstance(v, tuple) and len(v) == 2
+                             for rvp_by_project in static_rvp.values()
+                             for v in rvp_by_project.values()))) or \
+                   (rtp not in RESOURCE_TYPE_MAPPINGS_BY_PROJECT and
+                    not all((isinstance(v, tuple) and len(v) == 2
+                             for v in static_rvp.values()))):
+                    raise ClickException(
+                        "As issues journal export feature "
+                        "has been enabled in configuration,\n"
+                        "all the resource value mappings "
+                        "must be defined using the form:\n"
+                        "\n"
+                        "    ({ID}, {identifying_name})\n"
+                        "\n"
+                        "where {ID} and {identifying_name}, with respect to "
+                        "the specific Jira resource instance,\n"
+                        "are its internal ID and its unique identifying name.")
 
     def export(self, issues):
         """
@@ -188,7 +229,7 @@ class IssuesExporter(object):
             # Save related resources
             self._save_watchers(issue.watchers, issue_export)
             self._save_attachments(issue.attachments, issue_export)
-            self._save_journals(issue.journals, issue_export)
+            self._save_journals(issue, issue_export)
             self._save_time_entries(issue.time_entries)
 
             # TODO Save sub-tasks
@@ -538,12 +579,17 @@ class IssuesExporter(object):
         """
         return self._get_resource_mapping(custom_field)
 
-    def _get_custom_field_value_mapping(self, custom_field, project_id):
+    def _get_custom_field_value_mapping(self, custom_field, project_id,
+                                        include_internal_id=False):
         """
         Get the Jira value mapping for the custom field value.
 
         :param custom_field: Issue custom field
         :param project_id: ID of the project the issue belongs to
+        :param include_internal_id: If ``True`` the method pairs the Jira
+                                    resource value with its internal ID via the
+                                    ``ResourceKey`` tuple-like object.
+                                    Default is ``False``.
         :return: Jira value mapping for the custom field value
         """
         custom_field_def = self._issue_custom_fields[custom_field.id]
@@ -576,14 +622,16 @@ class IssuesExporter(object):
                 if getattr(custom_field_def, 'multiple', False):
                     user_ids = set(map(int, redmine_value))
                     jira_value = [
-                        self._get_resource_mapping(user)
+                        self._get_resource_mapping(
+                            user, include_internal_id=include_internal_id)
                         for user_id, user in self._users.items()
                         if user_id in user_ids
                     ]
                 else:
                     user_id = int(redmine_value)
                     jira_value = self._get_resource_mapping(
-                        self._users[user_id])
+                        self._users[user_id],
+                        include_internal_id=include_internal_id)
             elif custom_field_def.field_format == 'version':
                 if getattr(custom_field_def, 'multiple', False):
                     version_ids = set(map(int, redmine_value))
@@ -641,7 +689,7 @@ class IssuesExporter(object):
             issue_export.setdefault('attachments', []) \
                         .append(attachment_dict)
 
-    def _save_journals(self, journals, issue_export):
+    def _save_journals(self, issue, issue_export):
         """
         Save issue journals to export dictionary.
 
@@ -667,13 +715,39 @@ class IssuesExporter(object):
         **may** contain either only a comment, or only a list of
         changes to issue properties, or both.
 
-        :param journals: Issue journals
+        :param issue: Current issue
         :param issue_export: Single issue export dictionary
         """
-        for journal in journals:
+        # Jira issue history cannot be generated on-the-fly while iterating
+        # the Redmine issue journals, because collected journal items have
+        # to be further processed at the end of the loop.
+        # As the first processing consists in normalizing the journal details
+        # items on a per-property basis we initialize a dictionary, before
+        # the loop starts, in order to store journal details items by property.
+        journal_details_by_properties = dict()
+
+        # Iterate through issue journals ensuring chronological order
+        for journal in sorted(issue.journals, key=itemgetter('created_on')):
             # If there's a user note in the journal item...
             if getattr(journal, 'notes', None):
                 self._save_journal_notes(journal, issue_export)
+
+            # If the journal item contains details of changed properties...
+            if getattr(journal, 'details', None):
+                self._collect_journal_details(journal, issue.custom_fields,
+                                              journal_details_by_properties)
+
+        # 1st processing: Coalesce journal details on a per-property basis
+        self._coalesce_journal_details(issue, journal_details_by_properties,
+                                       issue.project.id)
+
+        # 2nd processing: Rebuild a new list of journals
+        #                 from coalesced journal details
+        journals_rebuild = \
+            self._rebuild_journals(journal_details_by_properties)
+
+        self._save_journal_details(journals_rebuild, issue.project.id,
+                                   issue_export)
 
     def _save_journal_notes(self, journal, issue_export):
         """
@@ -699,6 +773,548 @@ class IssuesExporter(object):
                     .append(comment_dict)
 
     @staticmethod
+    def _collect_journal_details(journal, custom_fields,
+                                 journal_details_by_properties):
+        """
+        Collect change events in the journal details and save them
+        by related property. A property may refer to one of the
+        following resource types:
+
+        - Attributes
+        - Custom fields
+        - Attachments
+        - Relations
+
+        A change related to both attachments and relations consists
+        in their additions or deletions, whereas a change related to
+        both attributes and custom fields may consist in:
+
+        - Setting a value when it was previously unset
+        - Modifying an already set value
+        - Unset a value
+
+        Unfortunately the Jira Importers plugin (JIM) currently does
+        not support the import of the history of either attachments or
+        relations.
+        However, for attachments only, it can at least include their
+        creation event in the issue history, as the creation date is
+        available in the "attachments" section of the issue export.
+
+        Therefore we hereby collect changes related to attributes and
+        custom fields only.
+
+        :param journal: Issue journal item
+        :param custom_fields: Issue custom fields
+        :param journal_details_by_properties: Dictionary of all issue
+        journal item
+                                              details stored by property
+        """
+        for detail in (detail for detail in journal.details
+                       if detail['property'] in ['attr', 'cf']):
+            # If the changed property is a custom field...
+            if detail['property'] == 'cf':
+                # ...we check if the custom field is actually available
+                # among the issue custom fields. If not, we skip the
+                # journal item detail.
+                # The presence of old references to undefined issue
+                # custom fields may occur with some old versions of
+                # Redmine.
+                try:
+                    next((custom_field for custom_field in custom_fields
+                          if custom_field.id == int(detail['name'])))
+                except StopIteration:
+                    continue
+
+            journal_detail_dict = {
+                'user': journal.user,
+                'created_on': journal.created_on,
+                'property': detail['property']
+            }
+
+            if 'new_value' in detail:
+                journal_detail_dict['new_value'] = detail['new_value']
+
+            if 'old_value' in detail:
+                journal_detail_dict['old_value'] = detail['old_value']
+
+            journal_details_by_properties \
+                .setdefault(detail['name'], []) \
+                .append(journal_detail_dict)
+
+    def _coalesce_journal_details(self, issue, journal_details, project_id):
+        """
+        For each property, normalize its journal item list (journal details),
+        removing dangling references to deleted resources related to issue.
+        The effect of normalization is basically the "coalescence" of
+        journal items.
+
+        :param issue: Current issue
+        :param journal_details: Dictionary of issue journal details organized
+                                by properties
+        :param project_id: ID of the project the issue belongs to
+        """
+
+        def is_journal_detail_valid(jd):
+            # A journal detail is valid if it represents
+            # one of the following operations:
+            # - A value set
+            # - A value unset
+            # - A value replacement
+            # and all the values involved are valid...
+            return ('old_value' not in jd and jd.get('new_value', None)) or \
+                   ('new_value' not in jd and jd.get('old_value', None)) or \
+                   ('old_value' in jd and jd['old_value'] is not None and
+                    'new_value' in jd and jd['new_value'] is not None)
+
+        for property_name, journal_detail_list in journal_details.items():
+            coalesced_journal_detail_list = []
+            new_journal_detail = None
+
+            # We iterate the journal detail list in reverse
+            # as the last change for the property,
+            # either it has been set or unset, is always valid.
+            for i, journal_detail in enumerate(reversed(journal_detail_list)):
+                if new_journal_detail is None:
+                    new_journal_detail = journal_detail
+
+                for value_type in ['old_value', 'new_value']:
+                    if value_type in journal_detail:
+                        journal_detail[value_type] = \
+                            self._lookup_journal_detail_property_value(
+                                property_name, journal_detail['property'],
+                                journal_detail[value_type], project_id)
+
+                # Because of a Redmine bug, that generally occurs when
+                # values of both enumeration resources and custom fields of
+                # type 'list' are manipulated, the last value set for an
+                # issue attribute, within the issue history context, does
+                # not refer to any existing value of the related
+                # enumeration.
+                # In that case we need to forcibly replace that wrong
+                # reference in the history with the actual value of the
+                # related attribute in the issue instance.
+                if i == 0 and \
+                   'new_value' in journal_detail and \
+                   journal_detail['new_value'] is None:
+                    current_value = None
+                    current_string_value = None
+
+                    if journal_detail['property'] == 'attr':
+                        if property_name[:-len('_id')] in \
+                           models.RedmineIssue.get_related_fields():
+                            field_name = property_name[:-len('_id')]
+                            current_value = getattr(issue, field_name, None)
+                            field = getattr(models.RedmineIssue, field_name)
+                            identifying_field = \
+                                field.related_resource.get_identifying_field()
+                            current_string_value = getattr(current_value,
+                                                           identifying_field)
+                        else:
+                            field_name = property_name
+                            current_value = getattr(issue, field_name, None)
+                            current_string_value = current_value
+                    elif journal_detail['property'] == 'cf':
+                        with suppress(StopIteration):
+                            current_value = \
+                                next((cf for cf in issue.custom_fields
+                                      if cf.id == int(property_name)))
+                            identifying_field = models.RedmineCustomField \
+                                                      .get_identifying_field()
+                            current_string_value = getattr(current_value,
+                                                           identifying_field)
+
+                    if current_string_value != journal_detail['new_value']:
+                        journal_detail['new_value'] = current_value
+
+                # If in the new journal detail a value has been replaced,
+                # but the old value is not valid...
+                if 'old_value' in new_journal_detail and \
+                   new_journal_detail['old_value'] is None:
+                    # ...if in the current journal detail
+                    # the old value is valid...
+                    if 'old_value' in journal_detail and \
+                       journal_detail['old_value'] is not None:
+                        # ...we compensate the new journal detail
+                        # with the old value of the current one
+                        new_journal_detail['old_value'] = \
+                            journal_detail['old_value']
+
+                if is_journal_detail_valid(new_journal_detail):
+                    if 'old_value' not in new_journal_detail or \
+                       'new_value' not in new_journal_detail or \
+                       ('old_value' in new_journal_detail and
+                        'new_value' in new_journal_detail and
+                        new_journal_detail['old_value'] !=
+                            new_journal_detail['new_value']):
+                        coalesced_journal_detail_list.append(
+                            new_journal_detail)
+
+                    new_journal_detail = None
+
+            if new_journal_detail is not None and \
+               is_journal_detail_valid(new_journal_detail):
+                coalesced_journal_detail_list.append(new_journal_detail)
+
+            # Update property journal detail list with the coalesced one
+            journal_details[property_name] = coalesced_journal_detail_list
+
+        # Prune properties with empty journal detail lists
+        for k, v in list(journal_details.items()):
+            if not v:
+                del journal_details[k]
+
+    def _lookup_journal_detail_property_value(self, property_name,
+                                              property_type, property_value,
+                                              project_id):
+        """
+        Lookup the resource instance of a journal detail property if
+        the latter is a foreign key to an issue related resource instance.
+        If the original value is not a valid integer ID it's returned as it is.
+        If the original value is a valid integer ID, but this ID does not refer
+        to an existing resource instance, ``None`` is returned.
+
+        If the original value is a list of values, the same logic is applied
+        to each of its elements, with the only difference that all values
+        are expected to be of the same type: all valid integer ID's, or all
+        non-integer ID's.
+
+        :param property_name: The name of the journal detail property
+        :param property_type: The type of the journal detail property.
+                              May be one of ``attr`` (attribute) or ``cf``
+                              (custom field).
+        :param property_value: The value of the journal detail property.
+                               It may be a scalar or a list.
+        :param project_id: ID of the project the issue belongs to
+        """
+        ret = property_value
+
+        # If the journal detail property value is a list of values...
+        if isinstance(property_value, list):
+            # ...try to convert all the string values to integer type
+
+            def try_parse_integer(s):
+                try:
+                    return int(s)
+                except ValueError:
+                    return None
+
+            property_value = [try_parse_integer(resource_id)
+                              for resource_id in property_value]
+
+            # If not all the values are valid integer ID's...
+            if not all(property_value):
+                # ...return the original value as it is
+                return ret
+        # ...otherwise...
+        else:
+            # ...try to convert the string value to integer type
+            try:
+                property_value = int(property_value)
+            except ValueError:
+                # If the conversion fails return the original value as it is
+                return ret
+
+        # If the property is an attribute...
+        if property_type == 'attr':
+            if property_name == 'project_id':
+                ret = self._projects.get(property_value, None)
+            elif property_name == 'tracker_id':
+                ret = self._trackers.get(property_value, None)
+            elif property_name == 'author_id':
+                ret = self._users.get(property_value, None)
+            elif property_name == 'assigned_to_id':
+                ret = self._users.get(property_value, None)
+
+                if ret is None and config.ALLOW_ISSUE_ASSIGNMENT_TO_GROUPS:
+                    ret = self._groups.get(property_value, None)
+            elif property_name == 'status_id':
+                ret = self._issue_statuses.get(property_value, None)
+            elif property_name == 'priority_id':
+                ret = self._issue_priorities.get(property_value, None)
+            elif property_name == 'category_id':
+                ret = self._issue_categories[project_id].get(property_value,
+                                                             None)
+            elif property_name == 'fixed_version_id':
+                ret = self._versions[project_id].get(property_value, None)
+        # ...else if the property is a custom field...
+        elif property_type == 'cf':
+            custom_field_def = self._issue_custom_fields[int(property_name)]
+
+            if custom_field_def.field_format in ['user', 'version']:
+                resources_dict = None
+
+                if custom_field_def.field_format == 'user':
+                    resources_dict = self._users
+                elif custom_field_def.field_format == 'version':
+                    resources_dict = self._versions
+
+                if getattr(custom_field_def, 'multiple', False):
+                    ret = [v for k, v in resources_dict.items()
+                           if k in property_value]
+                else:
+                    ret = resources_dict.get(property_value, None)
+        else:
+            raise NotImplementedError(
+                "The property type '{}' of a journal detail is not supported!"
+                .format(property_type))
+
+        return ret
+
+    @staticmethod
+    def _rebuild_journals(journal_details_by_properties):
+        """
+        Rebuild a new journal list from the journal details dictionary
+        organized by properties.
+
+        :param journal_details_by_properties: A dictionary of journal details
+                                              which keys are property names,
+                                              and values the journal details
+                                              related to the property
+        :return: A new list of journals
+        """
+        journals_rebuild = []
+
+        for prop, details in journal_details_by_properties.items():
+            for item in details:
+                try:
+                    journal = \
+                        next((journal for journal in journals_rebuild
+                              if journal['created_on'] == item['created_on']))
+                except StopIteration:
+                    journal = {
+                        'user': item['user'],
+                        'created_on': item['created_on'],
+                        'details': []
+                    }
+
+                    journals_rebuild.append(journal)
+
+                detail = {k: v for d in [item, {'name': prop}]
+                          for k, v in d.items() if k not in journal.keys()}
+
+                journal['details'].append(detail)
+
+        return journals_rebuild
+
+    def _save_journal_details(self, journals, project_id, issue_export):
+        """
+        Save issue journal details to export dictionary.
+
+        :param journals: Issue journals
+        :param project_id: ID of the project the issue belongs to
+        :param issue_export: Single issue export dictionary
+        """
+
+        def sort_type(j):
+            if j['property'] == 'attr':
+                return 0
+            elif j['property'] == 'cf':
+                return 1
+
+        # Iterate normalized journals in chronological order
+        for journal in sorted(journals, key=itemgetter('created_on')):
+            # Sort journal details by name and type (attribute / custom field)
+            for detail in sorted(sorted(journal['details'], key=sort_type),
+                                 key=itemgetter('name')):
+                field, field_type = None, None
+                from_internal_value, from_string = None, None
+                to_internal_value, to_string = None, None
+
+                for value_type in [k for k in ['old_value', 'new_value']
+                                   if k in detail]:
+                    internal_value, string_value = None, None
+
+                    if detail['property'] == 'attr':
+                        field_type = 'jira'
+                        field, internal_value, string_value = \
+                            self._get_journal_detail_field_mapping(
+                                detail['name'], detail[value_type], project_id)
+                    elif detail['property'] == 'cf':
+                        field_type = 'custom'
+                        field, internal_value, string_value = \
+                            self._get_journal_detail_custom_field_mapping(
+                                detail['name'], detail[value_type], project_id)
+
+                    if internal_value is not None and string_value is None:
+                        string_value = ""
+
+                    if value_type == 'old_value':
+                        from_internal_value = internal_value
+                        from_string = string_value
+                    elif value_type == 'new_value':
+                        to_internal_value = internal_value
+                        to_string = string_value
+
+                # If there exist a mapped Jira field for the Redmine one
+                # and the Jira old value is different to the Jira new value...
+                #
+                # NOTE: The condition of a Jira old value equal to the new one
+                #       happens when two different Redmine values are mapped to
+                #       the same Jira value.
+                if field is not None and \
+                   from_internal_value != to_internal_value:
+                    history = issue_export.setdefault('history', [])
+                    created = journal['created_on'].isoformat()
+
+                    try:
+                        event = next((event for event in history
+                                      if event['created'] == created))
+                    except StopIteration:
+                        author = self._get_resource_mapping(
+                            self._users[journal['user'].id])
+
+                        event = {
+                            'author': author,
+                            'created': created,
+                            'items': []
+                        }
+
+                        history.append(event)
+
+                    item = {
+                        'field': field,
+                        'fieldType': field_type,
+                        'from': from_internal_value,
+                        'fromString': from_string,
+                        'to': to_internal_value,
+                        'toString': to_string
+                    }
+
+                    event['items'].append(item)
+
+    def _get_journal_detail_field_mapping(self, redmine_field, redmine_value,
+                                          project_id):
+        """
+        Get the Jira field mapping of a journal detail referenced field.
+
+        If the referenced field refers to an issue related resource,
+        the mapping will be composed by: Jira field definition key,
+        Jira resource value internal ID and its unique string representation.
+
+        Instead, if the referenced field is a Redmine standard field
+        the mapping will be composed by: Jira field definition key,
+        Jira resource value.
+
+        :param redmine_field: Redmine field name
+        :param redmine_value: Redmine value
+        :param project_id: ID of the project the issue belongs to
+        :return: The Jira field mapping, composed by field name and value
+                 for standard fields, or by field name, instance ID and
+                 instance string representation for issue related resources.
+
+                 The returned object is a 3-elements tuples in both cases,
+                 as the third element for standard field is set to ``None``.
+        """
+        # If it's an issue related resource field...
+        if redmine_field[:-len('_id')] in \
+           models.RedmineIssue.get_related_fields():
+            resource_type = None
+            project_id_local = None
+
+            if redmine_field in ['category_id', 'fixed_version_id']:
+                project_id_local = project_id
+            elif redmine_field == 'priority_id':
+                resource_type = models.RedmineIssuePriority
+
+            resource_value_mapping, resource_type_mapping = \
+                self._get_resource_mapping(
+                    redmine_value,
+                    resource_type=resource_type,
+                    project_id=project_id_local,
+                    include_type_mapping=True,
+                    include_internal_id=True)
+
+            redmine_field_def = getattr(models.RedmineIssue,
+                                        redmine_field[:-len('_id')])
+            jira_field_def = ISSUE_FIELD_MAPPINGS[(redmine_field_def,
+                                                   resource_type_mapping)]
+            jira_internal_value, jira_string_value = resource_value_mapping
+            jira_internal_value = str(jira_internal_value)
+        # ...else if it's a Redmine standard field...
+        else:
+            redmine_field_def = getattr(models.RedmineIssue, redmine_field)
+            jira_field_def = ISSUE_FIELD_MAPPINGS[redmine_field_def]
+            jira_string_value = None
+
+            if redmine_field == 'subject':
+                jira_internal_value = redmine_value
+            elif redmine_field == 'description':
+                jira_internal_value = text2confluence_wiki(redmine_value)
+            elif redmine_field in ['created_on', 'updated_on',
+                                   'start_date', 'due_date']:
+                jira_internal_value = \
+                    datetime.strptime(redmine_value, '%Y-%m-%d').isoformat()
+            elif redmine_field == 'done_ratio':
+                jira_internal_value = str(redmine_value)
+            elif redmine_field == 'estimated_hours':
+                jira_internal_value = str(int(float(redmine_value)) * 3600)
+            else:
+                raise NotImplementedError(
+                    "The field '{}' in a journal detail is not supported!"
+                    .format(redmine_field))
+
+        if jira_field_def is not None:
+            jira_field = jira_field_def.key
+
+            return jira_field, jira_internal_value, jira_string_value
+        else:
+            return None, None, None
+
+    def _get_journal_detail_custom_field_mapping(self, redmine_field,
+                                                 redmine_value, project_id):
+        """
+        Get the Jira field mapping of a journal detail referenced custom field.
+
+        If the referenced custom field value refers to an related resource,
+        the mapping will be composed by: Jira custom field definition key,
+        Jira custom field value internal ID and its unique string
+        representation.
+
+        Instead, if the referenced custom field value has a simple type
+        the mapping will be composed by: Jira custom field definition key,
+        Jira custom field value.
+
+        :param redmine_field: Redmine custom field name
+        :param redmine_value: Redmine value
+        :param project_id: ID of the project the issue belongs to
+        :return: The Jira custom field mapping, composed by:
+
+                 - Custom field name, value instance ID and value instance
+                   string representation, if the custom field value refers
+                   to a related resource
+                 - Custom field name, Custom field value, if the custom field
+                   value has a simple type
+
+                 The returned object is a 3-elements tuples in both cases,
+                 as the third element in the second case is set to ``None``.
+        """
+        custom_field_id = int(redmine_field)
+        custom_field_def = self._issue_custom_fields[custom_field_id]
+        custom_field = models.FakeResourceInstance(
+            id=custom_field_id,
+            name=custom_field_def.name,
+            value=redmine_value)
+        field = self._get_resource_mapping(
+            custom_field, resource_type=models.RedmineCustomField)
+
+        if custom_field_def.field_format in ['user', 'version']:
+            if getattr(custom_field_def, 'multiple', False):
+                internal_value, string_value = \
+                    zip(*self._get_custom_field_value_mapping(
+                        custom_field, project_id, include_internal_id=True))
+            else:
+                internal_value, string_value = \
+                    self._get_custom_field_value_mapping(
+                        custom_field, project_id, include_internal_id=True)
+        else:
+            internal_value = \
+                self._get_custom_field_value_mapping(
+                    custom_field, project_id, include_internal_id=False)
+            string_value = None
+
+        return field, internal_value, string_value
+
+    @staticmethod
     def _save_time_entries(time_entries):
         """
         Save issue time entries to export dictionary.
@@ -714,7 +1330,8 @@ class IssuesExporter(object):
         # TODO Save issue total time spent
 
     def _get_resource_mapping(self, resource, resource_type=None,
-                              project_id=None, include_type_mapping=False):
+                              project_id=None, include_type_mapping=False,
+                              include_internal_id=False):
         """
         For each jira resource type mapped by the type of the given Redmine
         resource instance, this method finds a jira resource value.
@@ -746,6 +1363,10 @@ class IssuesExporter(object):
                                      which store references to the Redmine and
                                      Jira resource types respectively involved
                                      in the mapping. Default is ``False``.
+        :param include_internal_id: If ``True`` the method pairs the Jira
+                                    resource value with its internal ID via the
+                                    ``ResourceKey`` tuple-like object.
+                                    Default is ``False``.
         :return: The mapped jira resource value or, if ``include_type_mapping``
                  is set to ``True``, a  tuple containing both the related
                  ``ResourceTypeMapping`` object and the mapped jira resource
@@ -893,15 +1514,31 @@ class IssuesExporter(object):
             humanized_jira_resource_type = \
                 humanize(underscore(jira_resource_type.__name__))
 
+            value_proc = None
+
+            if config.EXPORT_ISSUE_JOURNALS:
+                # Force usage of '{ID}:{unique_name}' form
+                def parse_id_unique_name(value):
+                    try:
+                        return models.ResourceKey._make(value.split(':'))  # noqa
+                    except TypeError:
+                        raise UsageError(
+                            "The mapping has to be expressed using the "
+                            "{ID}:{identifying_name} form!")
+
+                value_proc = parse_id_unique_name
+
             jira_resource_value = click.prompt(
-                "[{} {}{}{} {}] {}"
+                "[{} {}{}{} {}{}] {}"
                 .format(humanized_redmine_resource_type,
                         field_mapping.redmine.name.upper(),
                         MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX,
                         humanized_jira_resource_type,
+                        "ID:" if config.EXPORT_ISSUE_JOURNALS else "",
                         field_mapping.jira.name.upper(),
                         redmine_resource_value),
-                prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX)
+                prompt_suffix=MISSING_RESOURCE_MAPPING_PROMPT_SUFFIX,
+                value_proc=value_proc)
 
             resource_type_mapping = ResourceTypeMapping(redmine_resource_type,
                                                         jira_resource_type)
@@ -915,6 +1552,9 @@ class IssuesExporter(object):
                     (project_id,
                      redmine_resource_value,
                      resource_type_mapping)] = jira_resource_value
+
+        if config.EXPORT_ISSUE_JOURNALS and not include_internal_id:
+            jira_resource_value = jira_resource_value[1]
 
         if include_type_mapping:
             return jira_resource_value, resource_type_mapping

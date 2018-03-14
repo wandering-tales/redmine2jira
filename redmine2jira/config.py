@@ -41,6 +41,14 @@ from __future__ import absolute_import
 CHECK_ISSUE_ID_FILTER_AVAILABILITY = True
 ISSUE_ID_FILTER_AVAILABLE = True
 
+# Flag to include journals in the issues export.
+# As the export of the journals of an issue is a complex feature
+# and comes with several requirements on configuration settings,
+# it needs to be explicitly enabled by the final user.
+#
+EXPORT_ISSUE_JOURNALS = False
+
+
 #
 # Resource mappings
 #
@@ -60,12 +68,29 @@ ISSUE_ID_FILTER_AVAILABLE = True
 # where the two "RESOURCE_TYPE" placeholders respectively refers to the
 # Redmine and Jira resource types where the mappings of resources apply.
 
-# These settings are declared as Python dictionaries where the keys and the
-# values are both "identifying names" of the instances of the two resource
-# types involved in the mappings, respectively for Redmine and Jira.
-# By "identifying names", in this context, we mean strings that "uniquely"
-# identify each instance of a specific resource type, in addition to its
-# internal ID number.
+# These settings are declared as Python dictionaries where the keys are the
+# "identifying names" of the instances of the related Redmine resource types,
+# and the values may be one of:
+#
+# - "Identifying names" of the mapped Jira resource instances
+# - Tuples composed by:
+#   - Internal ID of the mapped Jira resource instance
+#   - "Identifying name" of the mapped Jira resource instance
+#
+# The second form, more complex, that contains Jira resources internal ID's,
+# is necessary only if issue journals need to be included in the export,
+# as that feature needs those ID's to properly generate Jira history items.
+# The most effective (and official) method to retrieve Jira resources
+# internal ID's is via Jira REST API. Nonetheless, calling those API's may
+# not be feasible for everyone, for several reasons. So we added a short
+# handbook in the tool documentation with a list of useful API's to
+# retrieve those ID's:
+#
+# https://redmine2jira.readthedocs.io/en/latest/appendixes.html#jira-rest-api-handbook
+#
+# For both forms, instead, by "identifying names" we mean strings that
+# "uniquely" identify each instance of a specific resource type, in addition
+# to its internal ID number.
 # As each resource type, either it belongs to Redmine or Jira, has always
 # at least one field designated to contain such identifying name, for each
 # one of its instances, we will specify, in a comment before each dictionary
@@ -90,7 +115,7 @@ ISSUE_ID_FILTER_AVAILABLE = True
 # Example:
 #
 #    'my-cool-project': {
-#        'My Redmine instance name': 'My Jira instance name',
+#        'My Redmine instance name': (10, 'My Jira instance name'),
 #        ...
 #    }
 #    ...
@@ -123,7 +148,9 @@ REDMINE_USER_JIRA_USER_MAPPINGS = {
     #
     # Example:
     #
-    #    'alice.cooper': 'dave.grohl',
+    #    'ozzy.osbourne: 'ronny.james.dio',  # 1st form
+    #    ...
+    #    'alice.cooper': ('dave.grohl', 'dave.grohl'),  # 2nd form
     #    ...
 }
 
@@ -148,7 +175,9 @@ REDMINE_GROUP_JIRA_USER_MAPPINGS = {
     #
     # Example:
     #
-    #    'lead-developers': 'linus.torvalds',
+    #    'qa-leads': 'johann.sebastian.bach',  # 1st form
+    #    ...
+    #    'lead-developers': ('linus.torvalds', 'linus.torvalds'),  # 2nd form
     #    ...
 }
 
@@ -159,7 +188,9 @@ REDMINE_PROJECT_JIRA_PROJECT_MAPPINGS = {
     #
     # Example:
     #
-    #    'my-cool-project': 'MCP',
+    #    'my-very-cool-project': 'MVCP',  # 1st form
+    #    ...
+    #    'my-cool-project': (123, 'MCP'),  # 2nd form
     #    ...
 }
 
@@ -170,7 +201,9 @@ REDMINE_TRACKER_JIRA_ISSUE_TYPE_MAPPINGS = {
     #
     # Example:
     #
-    #    'Defect': 'Bug',
+    #    'Nonconformity': 'Incident',  # 1st form
+    #    ...
+    #    'Defect': (8, 'Bug'),  # 2nd form
     #    ...
 }
 
@@ -181,7 +214,9 @@ REDMINE_ISSUE_STATUS_JIRA_ISSUE_STATUS_MAPPINGS = {
     #
     # Example:
     #
-    #    'Open': 'To Do',
+    #    'Closed': 'Done',  # 1st form
+    #    ...
+    #    'Open': (19, 'To Do'),  # 2nd form
     #    ...
 }
 
@@ -192,7 +227,9 @@ REDMINE_ISSUE_PRIORITY_JIRA_ISSUE_PRIORITY_MAPPINGS = {
     #
     # Example:
     #
-    #    'High': 'Highest',
+    #    'Low': 'Lowest',  # 1st form
+    #    ...
+    #    'High': (9, 'Highest'),  # 2nd form
     #    ...
 }
 
@@ -203,7 +240,9 @@ REDMINE_CUSTOM_FIELD_JIRA_CUSTOM_FIELD_MAPPINGS = {
     #
     # Example:
     #
-    #    'Severity': 'Severity',
+    #    'Approval Team': 'Approvers',  # 1st form
+    #    ...
+    #    'Severity': (16, 'Severity'),  # 2nd form
     #    ...
 }
 
@@ -216,7 +255,9 @@ REDMINE_ISSUE_CATEGORY_JIRA_COMPONENT_MAPPINGS = {
     # Example:
     #
     #    'my-cool-project': {
-    #        'Backend': 'Backend',
+    #        'Frontend': 'Frontend',  # 1st form
+    #        ...
+    #        'Backend': (5, 'Backend'),  # 2nd form
     #        ...
     #    }
     #    ...
@@ -230,7 +271,9 @@ REDMINE_ISSUE_CATEGORY_JIRA_LABEL_MAPPINGS = {
     # Example:
     #
     #    'my-cool-project': {
-    #        'My Functional Module': 'My Functional Module',
+    #        'A category': 'A label',  # 1st form
+    #        ...
+    #        'Another category': (13, 'Another label'),  # 2nd form
     #        ...
     #    }
     #    ...
@@ -244,7 +287,9 @@ REDMINE_VERSION_JIRA_VERSION_MAPPINGS = {
     # Example:
     #
     #    'my-cool-project': {
-    #        '1.0.0': '1.0.0',
+    #        '1.0.0': '1.0.0',  # 1st form
+    #        ...
+    #        '0.0.1': (1, '0.0.1'),  # 2nd form
     #        ...
     #    }
     #    ...

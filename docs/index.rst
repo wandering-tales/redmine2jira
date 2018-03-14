@@ -13,6 +13,7 @@ Contents:
    contributing
    authors
    history
+   appendixes
 
 Indices and tables
 ==================
