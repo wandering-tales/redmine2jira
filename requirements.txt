@@ -7,7 +7,7 @@ isodate>=0.6
 lxml>=4.1
 markdown>=2.6
 Pillow>=5.0
-python-redmine>=2.0,<2.1
+python-redmine==2.1.0
 regex>=2018.2
 six>=1.11
 tabulate>=0.8
