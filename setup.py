@@ -21,7 +21,7 @@ requirements = [
     'lxml>=4.1',
     'markdown>=2.6',
     'Pillow>=5.0',
-    'python-redmine>=2.0,<2.1',
+    'python-redmine==2.2.1',
     'regex>=2018.2',
     'six>=1.11',
     'tabulate>=0.8',
