@@ -241,21 +241,21 @@ def list_custom_fields():
 
 
 @list_resources.command('issue_categories')
-@click.argument('project', 'Project ID/identifier')
-def list_issue_categories(project):
+@click.argument('project_id')
+def list_issue_categories(project_id):
     """List Redmine issue categories for a project."""
 
-    categories = redmine.version.filter(project_id=project)
+    categories = redmine.version.filter(project_id=project_id)
 
     _list_resources(categories, sort_key='name', exclude_attrs=['project'])
 
 
 @list_resources.command('versions')
-@click.argument('project', 'Project ID/identifier')
-def list_versions(project):
+@click.argument('project_id')
+def list_versions(project_id):
     """List Redmine versions for a project."""
 
-    versions = redmine.version.filter(project_id=project)
+    versions = redmine.version.filter(project_id=project_id)
 
     _list_resources(versions, sort_key='name', exclude_attrs=['project'])
 
