@@ -74,6 +74,10 @@ class RedmineVersion(ResourceType):
     name = Field('name', 'Name', identifying=True)
 
 
+class RedmineRelationshipField(ResourceType):
+    name = Field('relation_type', 'Relationship', identifying=True)
+
+
 class RedmineIssue(ResourceType):
     project = Field('project', 'Project',
                     related_resource=RedmineProject)
@@ -99,6 +103,8 @@ class RedmineIssue(ResourceType):
     due_date = Field('due_date', 'Due date')
     done_ratio = Field('done_ratio', 'Done %')
     estimated_hours = Field('estimated_hours', 'Estimated time')
+    parent_id = Field('parent', 'Parent')
+    is_private = Field('Is Private', 'Is Private')
 
 
 # Jira resource types
@@ -119,6 +125,10 @@ class JiraIssueType(ResourceType):
     name = Field('name', 'Name', identifying=True)
 
 
+class JiraFixedVersion(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
 class JiraIssueStatus(ResourceType):
     name = Field('name', 'Name', identifying=True)
 
@@ -136,6 +146,10 @@ class JiraCustomField(ResourceType):
 
 
 class JiraVersion(ResourceType):
+    name = Field('name', 'Name', identifying=True)
+
+
+class JiraLinkField(ResourceType):
     name = Field('name', 'Name', identifying=True)
 
 
@@ -160,4 +174,7 @@ class JiraIssue(ResourceType):
     description = Field('description', 'Description')
     created = Field('created', 'Created')
     updated = Field('updated', 'Updated')
-    timeoriginalestimate = Field('timeoriginalestimate', 'Original Estimate')
+    timeoriginalestimate = Field('timeoriginalestimate',
+                                 'Original Estimate')
+    fixedversion = Field('fixedversion', 'Fixed Version',
+                         related_resource=JiraFixedVersion)
