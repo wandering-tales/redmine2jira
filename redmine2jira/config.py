@@ -618,8 +618,7 @@ REDMINE_USE_HTTPS = False
 # REDMINE_HOST = 'goofy:3001'
 # next line is mark's test vm
 REDMINE_HOST = '172.25.0.98/redmine'
-# REDMINE_API_KEY = '<put-administrator-user-redmine-api-key>'
-REDMINE_API_KEY = '276e78f06bc8297708f3d12c64d9d5c2bbc75c56'
+REDMINE_API_KEY = '<put-administrator-user-redmine-api-key>'
 
 # Markup language used for text fields.
 #
