@@ -8,4 +8,4 @@ tox-pyenv==1.1.0
 coverage==4.5.3
 Sphinx==2.1.2
 cryptography==2.8
-PyYAML==5.1.1
+PyYAML==5.3
