@@ -306,6 +306,7 @@ REDMINE_VERSION_JIRA_VERSION_MAPPINGS = {
 REDMINE_USE_HTTPS = True
 REDMINE_HOST = 'redmine.example.com'
 REDMINE_API_KEY = '<put-administrator-user-redmine-api-key>'
+REDMINE_SSL_NOVERIFY = False
 
 # Markup language used for text fields.
 #

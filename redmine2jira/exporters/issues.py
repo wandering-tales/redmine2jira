@@ -55,7 +55,8 @@ class IssuesExporter(object):
         if check_config:
             IssuesExporter._validate_config()
 
-        redmine = Redmine(config.REDMINE_URL, key=config.REDMINE_API_KEY)
+        redmine = Redmine(config.REDMINE_URL, key=config.REDMINE_API_KEY,
+                          requests={'verify': config.REDMINE_SSL_NOVERIFY})
 
         # Get all Redmine users, groups, projects, trackers, issue statuses,
         # issue priorities, issue custom fields and store them by ID
