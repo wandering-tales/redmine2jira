@@ -22,7 +22,7 @@ from redmine2jira.exporters.issues import IssuesExporter
 
 
 redmine = Redmine(config.REDMINE_URL, key=config.REDMINE_API_KEY,
-                  requests={'verify': config.REDMINE_SSL_NOVERIFY})
+                  requests={'verify': config.REDMINE_SSL_VERIFY})
 
 
 @click.group(cls=DefaultGroup, default='export', default_if_no_args=True)
