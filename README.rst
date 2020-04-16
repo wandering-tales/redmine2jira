@@ -124,6 +124,24 @@ GET /issues.xml?created_on=%3E%3D2014-01-02T08:12:32Z
 To fetch issues updated after a certain timestamp (uncrypted filter is ">=2014-01-02T08:12:32Z") :
 GET /issues.xml?updated_on=%3E%3D2014-01-02T08:12:32Z
 
+  -i (default) export issues JSON
+
+  -l           export relationship links JSON
+
+  -v           Verbose
+
+  -p           Pretty Print formatted JSON
+
+  
+Examples
+   redmine2jira export --filter='status_id=*&sort=id'  -v all_issues.json
+
+   redmine2jira export --filter='status_id=*&sort=id&offset=0&limit=5' -v issues.json
+
+   redmine2jira export --filter='status_id=*&sort=id&offset=5&limit=5' -p -v pretty_issues.json
+
+   redmine2jira export --filter='status_id=*&sort=id' -l -v links.json
+
 
 Configuration
 -------------

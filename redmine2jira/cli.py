@@ -8,9 +8,11 @@ from functools import reduce
 from itertools import chain
 from operator import and_, itemgetter
 
+# import sys  # M.Kendall for debugging
 import click
 
 from click_default_group import DefaultGroup
+
 from redminelib import Redmine
 from redminelib.resultsets import ResourceSet
 from six import text_type
@@ -19,6 +21,7 @@ from tabulate import tabulate
 
 from redmine2jira import config
 from redmine2jira.exporters.issues import IssuesExporter
+# from _ast import TryExcept
 
 
 redmine = Redmine(config.REDMINE_URL, key=config.REDMINE_API_KEY,
@@ -34,15 +37,37 @@ def main():
 
 
 @main.command('export')
-@click.argument('output', type=click.File('w'))
 @click.option('--filter', 'query_string',
               help="Filter issues using URL query string syntax. "
                    "Please check documentation for additional details.")
+@click.option('-v', '--verbose', is_flag=True, default=False,
+              help="Adds extra output to the console log to help with export debugging")
+@click.option('-p', '--pretty-print', is_flag=True, default=False,
+              help="Pretty print (format) the JSON output")
+@click.option('-i', '--export-issues', is_flag=True, default=False,
+              help="Export issue list (default)")
+@click.option('-l', '--export-links', is_flag=True, default=False,
+              help="Export issue linking list")
+@click.argument('output', type=click.File('w'))
 # TODO Add option to append an additional label to all exported issues
 # in order to easily recognize all the issues in the same import batch
-def export_issues(output, query_string):
+def export_issues(output, verbose, pretty_print, export_issues, export_links, query_string):
     """Export Redmine issues."""
-    exporter = IssuesExporter(check_config=True)
+
+    if export_links:
+        export_issues = False
+        click.echo("Preparing to export issue linking")
+        click.echo("Warning: Links imported into JIRA may be duplicated as from/into distinctions (eg blocks/blocked) look like they are treated incorrectly in the Jira importer")
+    else:
+        export_issues = True
+
+    if export_issues:
+        click.echo("Preparing to export issues")
+
+    click.echo("Subtask/parent relationships are not exported so will be lost.")
+    click.echo("Timetracking is not exported so will be lost.")
+
+    exporter = IssuesExporter(output, verbose, pretty_print, export_issues, export_links, check_config=True)
 
     if query_string:
         issues = _get_issues_by_filter(query_string)
@@ -120,6 +145,29 @@ def _get_all_issues():
     :return: All issues
     """
     return redmine.issue.all()
+
+
+
+@main.command('verify',
+                 help='Call Rest Service to verify that you can connect on redmine')
+# @click.option('--redmine_host', 'redmine_host', prompt='Redmine Host',
+#               show_default=True, envvar='REDMINE_HOST',
+#               help='Redmine server name, it can be set in REDMINE-HOST environment variable')
+# @click.option('--redmine_api_key', 'redmine_api_key', prompt='Redmine user api key',
+#               show_default=True, envvar='REDMINE_API_KEY', help='Redmine user API key ')
+# @click.option('--redmine_use_https', 'redmine_use_https', default=True, is_flag=True,
+#               show_default=False, help='Connect on redmine REST API with https')
+# @click.option('--redmine_ssl_verify/--no_redmine_ssl_verify',
+#               'redmine_ssl_verify', default=True,
+#               show_default=False,
+#               help='Check the certificate for Redmine website')
+# def redmine_verify(redmine_host, redmine_api_key, redmine_use_https, redmine_ssl_verify):
+def redmine_verify():
+    """Call Rest Service to verify that you can connect on REDMINE."""
+
+    redmine = Redmine(config.REDMINE_URL, key=config.REDMINE_API_KEY, requests={'verify': config.REDMINE_SSL_VERIFY})
+    user = redmine.user.get('current')
+    click.echo('\nTest Connection :\n\tReturn connected user : %s' % user)
 
 
 @main.group('list')

@@ -127,3 +127,4 @@ fabric.properties
 
 # Local configuration file
 config_local.py
+/tmp

@@ -13,6 +13,20 @@ from __future__ import absolute_import
 #
 ##########################################################################
 
+# Jira has a limit of 10Mb for import files, so you may need to export and
+# immport in groups, especially if using a file that contains pretty printed
+# JSON
+# command line filtering examples
+#   redmine2jira export --filter='status_id=*&sort=id'  -v /tmp/all_issues_debug.json
+#   redmine2jira export --filter='status_id=*&sort=id&offset=1000&limit=5' -p -v /tmp/all_issues_debug.json
+#   redmine2jira export --filter='status_id=*&sort=id&offset=1000&limit=5' -p -v /tmp/all_issues_debug.json
+#
+
+# As well as this file review the following methods in issues.py to fix issues with invalid textile
+#    site_specific_journal_fixups
+#    site_specific_description_fixups
+#
+
 ########
 # Core #
 ########
@@ -138,6 +152,34 @@ EXPORT_ISSUE_JOURNALS = False
 # prompt to input one, which will be retained for the whole session.
 #
 
+
+#
+# Relationship.Name ==> Link.name
+#
+#
+REDMINE_RELATIONSHIP_FIELD_JIRA_LINK_FIELD_MAPPINGS = {
+
+    'blocks': 'blocks',
+    'copied from': 'cloners',
+    'copied to': 'cloners',
+    'copied_to': 'cloners',
+    'duplicates': 'duplicates',
+    'duplicated by': 'duplicates',
+    'precedes': 'precedes',
+    'related to': 'relates',
+    'relates': 'relates'
+# precedes - Links issues to define an "order", where A needs to be
+# completed x days before B can be started on
+# If B follows A, you can't give B
+# a starting date equal or less
+# than the ending date of A.
+# follows - Reciprocal of precedes.
+# If issue B follows A (ex A ends the 21/04 and B begins the 22/04)
+# and you add +2 day at the ending date of A,
+# the starting and ending dates of B will be +2 too.
+# copied to - Reciprocal of copied from.
+}
+
 #
 # User.Login ==> User.Username
 #
@@ -152,6 +194,7 @@ REDMINE_USER_JIRA_USER_MAPPINGS = {
     #    ...
     #    'alice.cooper': ('dave.grohl', 'dave.grohl'),  # 2nd form
     #    ...
+    'admin': 'admin',
 }
 
 #
@@ -192,6 +235,7 @@ REDMINE_PROJECT_JIRA_PROJECT_MAPPINGS = {
     #    ...
     #    'my-cool-project': (123, 'MCP'),  # 2nd form
     #    ...
+    # Map redmine project to Jira project key
 }
 
 #
@@ -315,7 +359,8 @@ REDMINE_SSL_VERIFY = True
 # - textile  (Textile markup language)
 # - markdown (Markdown markup language)
 #
-REDMINE_TEXT_FORMATTING = 'none'
+# REDMINE_TEXT_FORMATTING = 'none'
+REDMINE_TEXT_FORMATTING = 'textile'
 
 #
 # Issue tracking configuration
