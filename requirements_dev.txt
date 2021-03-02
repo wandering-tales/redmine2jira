@@ -6,7 +6,7 @@ watchdog==0.10.3
 flake8==3.8.3
 tox==3.19.0
 tox-pyenv==1.1.0
-coverage==5.2.1
+coverage==5.5
 Sphinx==3.2.0
 cryptography==3.3.2 # pyup: <3.4 # 3.4 drops Python 2.7 support
 PyYAML==5.4.1
