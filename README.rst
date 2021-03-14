@@ -93,16 +93,16 @@ Here follows the list of the supported filter parameters:
   - project_id (int or string): Project ID/identifier
   - subproject_id (int or string): Subproject ID/identifier
     (To be used in conjunction with 'project_id';
-     you can use `project_id=X` and `subproject_id=!*`
-     to get only the issues of a given project
-     and none of its subprojects)
+    you can use `project_id=X` and `subproject_id=!*`
+    to get only the issues of a given project
+    and none of its subprojects)
   - tracker_id (int): Tracker ID
   - query_id (int): Query ID
   - status_id (int): ['open', 'closed', '*', id]
     If the filter is not specified the default value will be 'open'.
   - assigned_to_id (int):_Assignee user ID
     (or 'me' to get issues which are assigned to the user
-     whose credentials were used to access the Redmine REST API)
+    whose credentials were used to access the Redmine REST API)
   - cf_x: Custom field having ID 'x'.
     The '~' sign can be used before the value to find issues
     containing a string in a custom field.
