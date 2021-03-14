@@ -29,8 +29,7 @@ requirements = [
 ]
 
 setup_requirements = [
-    # TODO(wandering-tales):
-    # put setup requirements(distutils extensions, etc.) here
+    'setuptools_scm',
 ]
 
 test_requirements = [
@@ -39,7 +38,9 @@ test_requirements = [
 
 setup(
     name='redmine2jira',
-    version='0.10.0',
+    use_scm_version={
+        'local_scheme': 'no-local-version',
+    },
     description='Export Redmine issues to file formats compatible '
                 'with the JIRA Importers plugin (JIM)',
     long_description=readme + '\n\n' + history,
