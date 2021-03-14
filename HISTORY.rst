@@ -93,7 +93,7 @@ Improvements
 Changes
 *******
 
-* Removed 'CUSTOM_' prefix from the resource value mappings setting names
+* Removed `CUSTOM_` prefix from the resource value mappings setting names
 
 Fixes
 *****
