@@ -1,0 +1,39 @@
+name: Publish Python distributions to PyPI and TestPyPI
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-n-publish:
+    name: Build and publish Python distributions to PyPI and TestPyPI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Reinstall pip using constrained version
+        run: |
+          pip install --constraint=.github/workflows/constraints.txt pip
+          pip --version
+
+      - name: Install package builder
+        run: pip install --constraint=.github/workflows/constraints.txt build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Publish distribution on PyPI
+        if: startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_TOKEN }}

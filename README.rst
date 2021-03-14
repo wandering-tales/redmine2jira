@@ -6,8 +6,9 @@ Redmine to JIRA Importers plugin
 .. image:: https://img.shields.io/pypi/v/redmine2jira.svg
         :target: https://pypi.python.org/pypi/redmine2jira
 
-.. image:: https://travis-ci.org/wandering-tales/redmine2jira.svg?branch=master
-        :target: https://travis-ci.org/wandering-tales/redmine2jira
+.. image:: https://github.com/wandering-tales/redmine2jira/actions/workflows/tests.yml/badge.svg
+        :target: https://github.com/wandering-tales/redmine2jira/actions?workflow=Tests
+        :alt: Tests
 
 .. image:: https://readthedocs.org/projects/redmine2jira/badge/?version=latest
         :target: https://redmine2jira.readthedocs.io/en/latest/?badge=latest

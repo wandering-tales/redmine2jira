@@ -41,8 +41,9 @@ setup(
     name='redmine2jira',
     version='0.10.0',
     description='Export Redmine issues to file formats compatible '
-                'with the JIRA Importers plugin (JIM) ',
+                'with the JIRA Importers plugin (JIM)',
     long_description=readme + '\n\n' + history,
+    long_description_content_type='text/x-rst',
     author="Michele Cardone",
     author_email='michele.cardone82@gmail.com',
     url='https://github.com/wandering-tales/redmine2jira',
