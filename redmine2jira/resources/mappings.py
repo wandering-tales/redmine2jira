@@ -50,10 +50,15 @@ _custom_field_rtp = \
     ResourceTypeMapping(models.RedmineCustomField,
                         models.JiraCustomField)
 
+_relationship_field_rtp = \
+    ResourceTypeMapping(models.RedmineRelationshipField,
+                        models.JiraLinkField)
+
+
 ALL_RESOURCE_TYPE_MAPPINGS = (
     _user_rtp, _group_user_rtp, _project_rtp, _tracker_issue_type_rtp,
     _issue_status_rtp, _issue_priority_rtp, _issue_category_component_rtp,
-    _issue_category_label_rtp, _version_rtp, _custom_field_rtp
+    _issue_category_label_rtp, _version_rtp, _custom_field_rtp, _relationship_field_rtp
 )
 
 RESOURCE_TYPE_MAPPINGS_BY_PROJECT = (
@@ -100,7 +105,10 @@ RESOURCE_TYPE_IDENTIFYING_FIELD_MAPPINGS = {
                      models.JiraVersion.name),
     _custom_field_rtp:
         FieldMapping(models.RedmineCustomField.name,
-                     models.JiraCustomField.name)
+                     models.JiraCustomField.name),
+    _relationship_field_rtp:
+        FieldMapping(models.RedmineRelationshipField.name,
+                     models.JiraLinkField.name)
 }
 
 # Redmine and Jira issue field definitions mappings
@@ -127,6 +135,8 @@ ISSUE_FIELD_MAPPINGS = {
         models.JiraIssue.components,
     (models.RedmineIssue.category, _issue_category_label_rtp):
         models.JiraIssue.labels,
+    (models.RedmineIssue.fixed_version, _version_rtp):
+        models.JiraIssue.fixedversion,
     models.RedmineIssue.subject: models.JiraIssue.summary,
     models.RedmineIssue.description: models.JiraIssue.description,
     models.RedmineIssue.created_on: models.JiraIssue.created,
@@ -134,7 +144,9 @@ ISSUE_FIELD_MAPPINGS = {
     models.RedmineIssue.start_date: None,
     models.RedmineIssue.due_date: None,
     models.RedmineIssue.done_ratio: None,
-    models.RedmineIssue.estimated_hours: models.JiraIssue.timeoriginalestimate
+    models.RedmineIssue.estimated_hours: models.JiraIssue.timeoriginalestimate,
+    models.RedmineIssue.parent_id: None,
+    models.RedmineIssue.is_private: None
 }
 
 # Redmine and Jira issue custom field type mappings.

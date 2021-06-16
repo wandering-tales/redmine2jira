@@ -8,9 +8,11 @@ from functools import reduce
 from itertools import chain
 from operator import and_, itemgetter
 
+# import sys  # M.Kendall for debugging
 import click
 
 from click_default_group import DefaultGroup
+
 from redminelib import Redmine
 from redminelib.resultsets import ResourceSet
 from six import text_type
@@ -19,6 +21,7 @@ from tabulate import tabulate
 
 from redmine2jira import config
 from redmine2jira.exporters.issues import IssuesExporter
+# from _ast import TryExcept
 
 
 redmine = Redmine(config.REDMINE_URL, key=config.REDMINE_API_KEY)
@@ -33,15 +36,37 @@ def main():
 
 
 @main.command('export')
-@click.argument('output', type=click.File('w'))
 @click.option('--filter', 'query_string',
               help="Filter issues using URL query string syntax. "
                    "Please check documentation for additional details.")
+@click.option('-v', '--verbose', is_flag=True, default=False,
+              help="Adds extra output to the console log to help with export debugging")
+@click.option('-p', '--pretty-print', is_flag=True, default=False,
+              help="Pretty print (format) the JSON output")
+@click.option('-i', '--export-issues', is_flag=True, default=False,
+              help="Export issue list (default)")
+@click.option('-l', '--export-links', is_flag=True, default=False,
+              help="Export issue linking list")
+@click.argument('output', type=click.File('w'))
 # TODO Add option to append an additional label to all exported issues
 # in order to easily recognize all the issues in the same import batch
-def export_issues(output, query_string):
+def export_issues(output, verbose, pretty_print, export_issues, export_links, query_string):
     """Export Redmine issues."""
-    exporter = IssuesExporter(check_config=True)
+
+    if export_links:
+        export_issues = False
+        click.echo("Preparing to export issue linking")
+        click.echo("Warning: Links imported into JIRA may be duplicated as from/into distinctions (eg blocks/blocked) look like they are treated incorrectly in the Jira importer")
+    else:
+        export_issues = True
+
+    if export_issues:
+        click.echo("Preparing to export issues")
+
+    click.echo("Subtask/parent relationships are not exported so will be lost.")
+    click.echo("Timetracking is not exported so will be lost.")
+
+    exporter = IssuesExporter(output, verbose, pretty_print, export_issues, export_links, check_config=True)
 
     if query_string:
         issues = _get_issues_by_filter(query_string)
@@ -241,21 +266,21 @@ def list_custom_fields():
 
 
 @list_resources.command('issue_categories')
-@click.argument('project_id')
-def list_issue_categories(project_id):
+@click.argument('project')  # , help='Project ID/identifier')
+def list_issue_categories(project):
     """List Redmine issue categories for a project."""
 
-    categories = redmine.version.filter(project_id=project_id)
+    categories = redmine.version.filter(project_id=project)
 
     _list_resources(categories, sort_key='name', exclude_attrs=['project'])
 
 
 @list_resources.command('versions')
-@click.argument('project_id')
-def list_versions(project_id):
+@click.argument('project')  # , help='Project ID/identifier')
+def list_versions(project):
     """List Redmine versions for a project."""
 
-    versions = redmine.version.filter(project_id=project_id)
+    versions = redmine.version.filter(project_id=project)
 
     _list_resources(versions, sort_key='name', exclude_attrs=['project'])
 
