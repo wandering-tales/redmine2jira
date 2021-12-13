@@ -4,7 +4,7 @@ contextlib2==0.6.0.post1
 future==0.18.2
 inflection==0.3.1 # pyup: >=0.3.1,<0.4 # 0.4 drops Python 2.7 support
 isodate==0.6.0
-lxml==4.6.3
+lxml==4.6.5
 markdown==3.1.1 # pyup: >=3.1,<3.2 # 3.2 drops Python 2.7 support
 Pillow==8.2.0
 python-redmine==2.3.0
