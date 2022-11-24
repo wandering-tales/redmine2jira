@@ -6,6 +6,12 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from builtins import str
+import contextlib
+
+try:
+    from collections.abc import Container
+except ImportError:
+    from collections import Container
 
 try:
     from contextlib import suppress
@@ -22,7 +28,7 @@ from click.exceptions import ClickException, UsageError
 from inflection import humanize, underscore
 from isodate import duration_isoformat
 from redminelib import Redmine
-from redminelib.exceptions import ForbiddenError
+from redminelib.exceptions import ForbiddenError, ResourceAttrError
 
 from redmine2jira import config
 from redmine2jira.resources import models
@@ -235,6 +241,8 @@ class IssuesExporter(object):
             # TODO Save sub-tasks
 
             # TODO Save relations
+
+        return issues_export
 
     def _save_project(self, project, issues_export):
         """
@@ -593,7 +601,16 @@ class IssuesExporter(object):
         :return: Jira value mapping for the custom field value
         """
         custom_field_def = self._issue_custom_fields[custom_field.id]
-        redmine_value = custom_field.value
+
+        try:
+            redmine_value = custom_field.value
+        except ResourceAttrError:
+            # It might happen that custom field default value
+            # is not properly set.
+            # In such scenario we should retrieve it directly from
+            # custom field definition.
+            redmine_value = custom_field_def.default_value
+
         jira_value = redmine_value
 
         if redmine_value:
@@ -734,8 +751,13 @@ class IssuesExporter(object):
 
             # If the journal item contains details of changed properties...
             if getattr(journal, 'details', None):
-                self._collect_journal_details(journal, issue.custom_fields,
-                                              journal_details_by_properties)
+                if hasattr(issue, 'custom_fields'):
+                    self._collect_journal_details(journal,
+                                                  journal_details_by_properties,
+                                                  issue.custom_fields)
+                else:
+                    self._collect_journal_details(journal,
+                                                  journal_details_by_properties)
 
         # 1st processing: Coalesce journal details on a per-property basis
         self._coalesce_journal_details(issue, journal_details_by_properties,
@@ -773,8 +795,8 @@ class IssuesExporter(object):
                     .append(comment_dict)
 
     @staticmethod
-    def _collect_journal_details(journal, custom_fields,
-                                 journal_details_by_properties):
+    def _collect_journal_details(journal, journal_details_by_properties,
+                                 issue_custom_fields=None):
         """
         Collect change events in the journal details and save them
         by related property. A property may refer to one of the
@@ -804,7 +826,7 @@ class IssuesExporter(object):
         custom fields only.
 
         :param journal: Issue journal item
-        :param custom_fields: Issue custom fields
+        :param issue_custom_fields: Issue custom fields
         :param journal_details_by_properties: Dictionary of all issue
         journal item
                                               details stored by property
@@ -812,7 +834,7 @@ class IssuesExporter(object):
         for detail in (detail for detail in journal.details
                        if detail['property'] in ['attr', 'cf']):
             # If the changed property is a custom field...
-            if detail['property'] == 'cf':
+            if issue_custom_fields and detail['property'] == 'cf':
                 # ...we check if the custom field is actually available
                 # among the issue custom fields. If not, we skip the
                 # journal item detail.
@@ -820,7 +842,7 @@ class IssuesExporter(object):
                 # custom fields may occur with some old versions of
                 # Redmine.
                 try:
-                    next((custom_field for custom_field in custom_fields
+                    next((custom_field for custom_field in issue_custom_fields
                           if custom_field.id == int(detail['name'])))
                 except StopIteration:
                     continue
@@ -908,12 +930,14 @@ class IssuesExporter(object):
                             identifying_field = \
                                 field.related_resource.get_identifying_field()
                             current_string_value = getattr(current_value,
-                                                           identifying_field)
+                                                           identifying_field,
+                                                           None)
                         else:
                             field_name = property_name
                             current_value = getattr(issue, field_name, None)
                             current_string_value = current_value
-                    elif journal_detail['property'] == 'cf':
+                    elif (journal_detail['property'] == 'cf' and
+                          hasattr(issue, 'custom_fields')):
                         with suppress(StopIteration):
                             current_value = \
                                 next((cf for cf in issue.custom_fields
@@ -1010,7 +1034,7 @@ class IssuesExporter(object):
             # ...try to convert the string value to integer type
             try:
                 property_value = int(property_value)
-            except ValueError:
+            except (TypeError, ValueError):
                 # If the conversion fails return the original value as it is
                 return ret
 
@@ -1049,6 +1073,8 @@ class IssuesExporter(object):
                     resources_dict = self._versions
 
                 if getattr(custom_field_def, 'multiple', False):
+                    if not isinstance(property_value, Container):
+                        property_value = [property_value]
                     ret = [v for k, v in resources_dict.items()
                            if k in property_value]
                 else:
@@ -1244,7 +1270,7 @@ class IssuesExporter(object):
                                    'start_date', 'due_date']:
                 jira_internal_value = \
                     datetime.strptime(redmine_value, '%Y-%m-%d').isoformat()
-            elif redmine_field == 'done_ratio':
+            elif redmine_field in ('done_ratio', 'is_private'):
                 jira_internal_value = str(redmine_value)
             elif redmine_field == 'estimated_hours':
                 jira_internal_value = str(int(float(redmine_value)) * 3600)

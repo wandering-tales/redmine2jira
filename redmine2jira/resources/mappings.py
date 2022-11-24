@@ -134,7 +134,8 @@ ISSUE_FIELD_MAPPINGS = {
     models.RedmineIssue.start_date: None,
     models.RedmineIssue.due_date: None,
     models.RedmineIssue.done_ratio: None,
-    models.RedmineIssue.estimated_hours: models.JiraIssue.timeoriginalestimate
+    models.RedmineIssue.estimated_hours: models.JiraIssue.timeoriginalestimate,
+    models.RedmineIssue.is_private: None
 }
 
 # Redmine and Jira issue custom field type mappings.

@@ -99,6 +99,7 @@ class RedmineIssue(ResourceType):
     due_date = Field('due_date', 'Due date')
     done_ratio = Field('done_ratio', 'Done %')
     estimated_hours = Field('estimated_hours', 'Estimated time')
+    is_private = Field('is_private', 'Private')
 
 
 # Jira resource types

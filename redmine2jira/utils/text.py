@@ -46,10 +46,11 @@ def xhtml2confluence_wiki(xhtml):
     :return: Confluence Wiki fragment
     """
     from pkg_resources import resource_stream
+    from xml.sax.saxutils import escape
 
     with closing(StringIO()) as xml:
         xml.write('<body xmlns="http://www.w3.org/1999/xhtml">\n')
-        xml.write(xhtml)
+        xml.write(escape(xhtml))
         xml.write('\n</body>')
         xml_string = xml.getvalue()
         dom = et.fromstring(xml_string)

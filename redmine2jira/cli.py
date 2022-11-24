@@ -4,6 +4,8 @@
 
 from __future__ import absolute_import
 
+import json
+
 from functools import reduce
 from itertools import chain
 from operator import and_, itemgetter
@@ -51,7 +53,9 @@ def export_issues(output, query_string):
     click.echo("{:d} issue{} found!"
                .format(len(issues), "s" if len(issues) > 1 else ""))
 
-    exporter.export(issues)
+    issues_export = exporter.export(issues)
+
+    json.dump(issues_export, output, indent=2)
 
     click.echo("Issues exported in '{}'!".format(output.name))
     click.echo()
@@ -70,7 +74,7 @@ def _get_issues_by_filter(query_string):
     # Split filters written in URL query string syntax,
     # URL decoding parameters values
     filters = {k: unquote(v)
-               for k, v in zip(*[iter([kv for p in query_string.split('&')
+               for k, v in zip(*[iter([kv for p in query_string.split(';')
                                        for kv in p.split('=')])] * 2)}
 
     issues = redmine.issue.filter(**filters)
@@ -127,26 +131,21 @@ def list_resources():
 
 
 @list_resources.command('users')
-@click.option('--all', 'user_status', flag_value=0,
-              help="Get all users")
-@click.option('--active', 'user_status', flag_value=1, default=True,
+@click.option('--anonymous', 'user_status', flag_value=0,
+              help="Filter anonymous users")
+@click.option('--active', 'user_status', flag_value=1,
               help="Filter active users")
+@click.option('--registered', 'user_status', flag_value=2,
+              help="Filter registered users")
 @click.option('--locked', 'user_status', flag_value=3,
               help="Filter locked users")
 def list_users(user_status):
     """List Redmine users."""
 
-    users = None
-
-    if user_status == 0:
-        # Get Redmine all users
-        users = chain(redmine.user.all(), redmine.user.filter(status=3))
-    elif user_status == 1:
-        # Get Redmine active users
-        users = redmine.user.all()
-    elif user_status == 3:
-        # Get Redmine locked users
-        users = redmine.user.filter(status=3)
+    if user_status is None:
+        users = list(chain(redmine.user.all(), redmine.user.filter(status=3)))
+    else:
+        users = redmine.user.filter(status=user_status)
 
     _list_resources(users, sort_key='login', exclude_attrs=('created_on',))
 
@@ -190,7 +189,8 @@ def list_projects():
                     sort_key='name',
                     format_dict={'name': get_project_full_name},
                     exclude_attrs=('description', 'enabled_modules',
-                                   'created_on', 'updated_on'))
+                                   'created_on', 'updated_on',
+                                   'time_entry_activities'))
 
 
 @list_resources.command('trackers')
@@ -245,7 +245,7 @@ def list_custom_fields():
 def list_issue_categories(project_id):
     """List Redmine issue categories for a project."""
 
-    categories = redmine.version.filter(project_id=project_id)
+    categories = redmine.project.get(project_id).issue_categories
 
     _list_resources(categories, sort_key='name', exclude_attrs=['project'])
 
@@ -262,10 +262,14 @@ def list_versions(project_id):
 
 def _list_resources(resource_set, sort_key,
                     format_dict=None, exclude_attrs=None):
+    if not resource_set:
+        click.echo("No resources found!")
+        return
+
     # Find resource attributes excluding relations with other resource types
     scalar_attributes = \
         (set((a for a in dir(resource)
-              if not isinstance(getattr(resource, a), ResourceSet)))
+              if not isinstance(getattr(resource, a, None), ResourceSet)))
          for resource in resource_set)
 
     # Compute a common subset among all the scalar attributes
@@ -289,7 +293,7 @@ def _list_resources(resource_set, sort_key,
         base_headers + sorted(common_scalar_attributes - set(base_headers))
 
     def _format(key, resource):
-        value = getattr(resource, key)
+        value = getattr(resource, key, None)
 
         if format_dict and key in format_dict:
             return format_dict[key](resource, value)
