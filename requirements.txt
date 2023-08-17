@@ -1,4 +1,4 @@
-Click==7.1.2
+Click==8.1.7
 click-default-group==1.2.2
 contextlib2==0.6.0.post1
 future==0.18.2
