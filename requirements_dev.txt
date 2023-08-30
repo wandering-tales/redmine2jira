@@ -4,7 +4,7 @@ pip==20.3.4 # pyup: <21 # 21 drops Python 2.7 support
 bumpversion==0.6.0
 watchdog==0.10.4 # pyup: <1 # 1 drops Python 2.7 and 3.5 support
 flake8==3.9.2
-tox==3.23.1
+tox==4.11.0
 tox-pyenv==1.1.0
 coverage==5.5
 Sphinx==3.2.0
