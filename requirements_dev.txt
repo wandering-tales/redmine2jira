@@ -1,4 +1,4 @@
-build==0.3.1.post1
+build==1.1.1
 pep517==0.10.0
 pip==20.3.4 # pyup: <21 # 21 drops Python 2.7 support
 bumpversion==0.6.0
